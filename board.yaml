@@ -92,16 +92,16 @@ hexes:
   C_MOUNTAIN:
     terrain: MOUNTAIN
     neighbors: [C_FARM, C_VILLAGE]
-    river_neighbors: [C_TUNDRA]
+    river_neighbors: [C_TUNDRA, FOREST_6_4, T_VILLAGE]
     has_encounter: true
     board_position: [7, 4]
 
   C_TUNDRA:
     terrain: TUNDRA
-    neighbors: []
+    neighbors: [FOREST_6_4]
     river_neighbors: [C_FARM, C_MOUNTAIN]
     is_tunnel: true
-    board_position: [6,3]
+    board_position: [6,5]
     
   VILLAGE_6_2:
     terrain: VILLAGE
@@ -109,3 +109,39 @@ hexes:
     river_neighbors: [C_FARM]
     board_position: [6, 2]
     has_encounter: true
+
+  FOREST_6_4:
+    terrain: FOREST
+    neighbors: [C_TUNDRA, T_MOUNTAIN, T_VILLAGE]
+    river_neighbors: [C_MOUNTAIN]
+    board_position: [6, 4]
+
+  T_HOME:
+    terrain: HOME_BASE
+    neighbors: [T_FARM, T_TUNDRA]
+    board_position: [7, 7]
+
+  T_FARM:
+    terrain: FARM
+    neighbors: [T_HOME, T_TUNDRA, T_MOUNTAIN, T_VILLAGE]
+    river_neighbors: []
+    board_position: [7, 6]
+
+  T_TUNDRA:
+    terrain: TUNDRA
+    neighbors: [T_HOME, T_FARM, T_MOUNTAIN]
+    river_neighbors: [N_FARM, N_VILLAGE]
+    board_position: [6, 6]
+
+  T_MOUNTAIN:
+    terrain: MOUNTAIN
+    neighbors: [T_FARM, T_TUNDRA, N_MOUNTAIN]
+    river_neighbors: []
+    has_encounter: true
+    board_position: [6, 5]
+
+  T_VILLAGE:
+    terrain: VILLAGE
+    neighbors: [T_FARM, T_MOUNTAIN, FOREST_6_4]
+    river_neighbors: [C_MOUNTAIN]
+    board_position: [7, 5]
