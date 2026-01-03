@@ -8,6 +8,8 @@ Python 3.12+ recommended.
 """
 
 from __future__ import annotations
+import sys
+import argparse
 
 from dataclasses import dataclass, field, replace
 from enum import IntEnum, Enum, auto
@@ -23,7 +25,7 @@ from board import HexId, Hex, Board, Terrain
 from units import Resource
 import scorer
 from gamestate import GameState, Units, Progress, Economy
-from factions import Faction, togawa_config, nordic_config
+from factions import Faction, togawa_config, nordic_config, crimea_config
 from units import TopActionType, BottomActionType, BottomActionBonus, TopUpgradeChoice, BottomUpgradeChoice, Popularity, Structure
 
 process = psutil.Process()
@@ -1196,15 +1198,92 @@ def summarize_state(s: GameState) -> str:
     )
 
 
+# --- Registries ---
+FACTIONS = {
+    "nordic": nordic_config,
+    "togawa": togawa_config,
+    "crimea": crimea_config,
+    # add more as needed
+}
+
+MATS = {
+    "agricultural": AgriculturalMat,
+    "industrial": IndustrialMat,
+    "engineering": EngineeringMat,
+    "militant": MilitantMat,
+    "patriotic": PatrioticMat,
+    "innovative": InnovativeMat,
+    "mechanical": MechanicalMat,
+    # add more as needed
+}
+
+
+def parse_args(argv: list[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Scythe opening solver (beam search)"
+    )
+
+    parser.add_argument(
+        "--faction",
+        required=True,
+        choices=sorted(FACTIONS.keys()),
+        help="Faction name",
+    )
+
+    parser.add_argument(
+        "--mat",
+        required=True,
+        choices=sorted(MATS.keys()),
+        help="Player mat name",
+    )
+
+    parser.add_argument(
+        "--turns",
+        type=int,
+        default=8,
+        help="Number of turns to search (default: 8)",
+    )
+
+    parser.add_argument(
+        "--beam-width",
+        type=int,
+        default=1000,
+        help="Beam width (default: 1000)",
+    )
+
+    parser.add_argument(
+        "--top",
+        type=int,
+        default=10,
+        help="Number of top lines to print (default: 10)",
+    )
+
+    return parser.parse_args(argv)
+
+
 if __name__ == "__main__":
+    args = parse_args(sys.argv[1:])
+
+    # Resolve faction + mat from registries
+    faction_fn = FACTIONS[args.faction]
+    mat_cls = MATS[args.mat]
+
     engine = Engine()
-    # start = make_start_state_general(togawa_config, MilitantMat)
-    start = make_start_state_general(nordic_config, MilitantMat)
 
-    lines = beam_search_openings(engine, start, turns=8, beam_width=1000)
+    start = make_start_state_general(
+        faction_fn,
+        mat_cls,
+    )
 
-    print("Top 10 opening lines:")
-    for i, ln in enumerate(lines[:10], start=1):
+    lines = beam_search_openings(
+        engine,
+        start,
+        turns=args.turns,
+        beam_width=args.beam_width,
+    )
+
+    print(f"\nTop {args.top} opening lines:")
+    for i, ln in enumerate(lines[:args.top], start=1):
         print(f"\n#{i}  Score={scorer.line_score(ln.state):.2f}")
         for step in ln.turn_actions:
             print(" ", step)
