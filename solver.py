@@ -385,6 +385,7 @@ class Progress:
     enlists: int = 0
     top_upgrade_opportunities: Tuple[TopUpgradeChoice] = ()
     bottom_upgrade_opportunities: Tuple = ()
+    encounters: Tuple[HexId] = ()
 
     # top actions that can be modified by upgrades
     bolster_modifier: int = 0
@@ -694,11 +695,17 @@ class Engine:
         raise RulesError(f"Unhandled top action {a}")
 
     def _apply_move(self, s: GameState, c: TurnChoice) -> GameState:
+        prog = s.prog
         (unit_type, source_hid, dest_hid, unit_count) = c.params
         # self._assert(dest_hid in s.board.neighbors(source_hid), "Illegal move destination")
         # REVISIT - works for Character only right now
         if unit_type == TopActionType.MOVE_UNIT_CHARACTER:
             new_units = replace(s.units, character=dest_hid)
+            # did we trigger an encounter?
+            if s.board.hexes[dest_hid].has_encounter and dest_hid not in prog.encounters:
+                #print(f"moving a character to {dest_hid} with encounter!!")
+                prog = replace(prog, encounters=prog.encounters + (dest_hid, ))
+                # BOOKMARK!! Test that this is working.
         elif unit_type == TopActionType.MOVE_UNIT_WORKER:
             # print("Thinking about moving workers {}".format(c.params))
             # going to have to manipulate a lot of immutable data, like s.unit.workers
@@ -716,7 +723,7 @@ class Engine:
             # REVISIT - To do
             pass
 
-        return replace(s, units=new_units, last_top_action=TopActionType.MOVE)
+        return replace(s, units=new_units, last_top_action=TopActionType.MOVE, prog=prog)
 
     def _apply_produce(self, s: GameState, c: TurnChoice) -> GameState:
         # c.params: Tuple[Tuple[HexId, int, Resource], ...]
@@ -1037,6 +1044,7 @@ def midgame_score(s: GameState) -> float:
     territory_count = len(s.units.territories_controlled())
     score = 0.0
     score += 6.0 * mechs
+    score += 3.3 * len(s.prog.encounters)
     score += 2.5 * territory_count
     score += 1.1 * s.econ.coins
     score += 1.9 * s.econ.popularity
@@ -1052,6 +1060,7 @@ def endgame_score(s: GameState) -> float:
     score += 1.0
     score += 3.0 * s.econ.popularity
     score += 3.5 * territory_count
+    score += 0.5 * len(s.prog.encounters)
     return score
 
 
@@ -1067,6 +1076,7 @@ def opening_score(s: GameState) -> float:
     score = 0.0
     score += 3.0 * workers
     score += 5.0 * mechs
+    score += 3.3 * len(s.prog.encounters)
     score += 4.0 * s.prog.upgrades_done * ((25.0 - min(24, s.turn)) / 25.0)
     score += 4.1 * s.prog.enlists * ((25.0 - min(24, s.turn)) / 25.0)
     score += 4.0 * s.prog.structures_built * ((25.0 - min(24, s.turn)) / 25.0)
