@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass
+from enum import IntEnum, auto
+from units import Resource
 
 # -----------------------------
 # Board model (graph)
@@ -35,3 +37,28 @@ class Board:
         return self.hexes[hid].terrain
 
 
+class Terrain(IntEnum):
+    FARM = auto()
+    FOREST = auto()
+    MOUNTAIN = auto()
+    TUNDRA = auto()
+    VILLAGE = auto()
+    FACTORY = auto()
+    LAKE = auto()
+    HOME_BASE = auto()
+
+    @classmethod
+    def produces(cls, terrainType):
+        match terrainType:
+            case Terrain.HOME_BASE:
+                return None
+            case Terrain.FARM:
+                return Resource.FOOD
+            case Terrain.FOREST:
+                return Resource.WOOD
+            case Terrain.MOUNTAIN:
+                return Resource.METAL
+            case Terrain.TUNDRA:
+                return Resource.OIL
+            case Terrain.VILLAGE:
+                return Resource.WORKER

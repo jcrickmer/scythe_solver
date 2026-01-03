@@ -19,7 +19,8 @@ from itertools import combinations
 import yaml
 from pathlib import Path
 import psutil
-from board import HexId, Hex, Board
+from board import HexId, Hex, Board, Terrain
+from units import Resource
 process = psutil.Process()
 # print(process.memory_info().rss)
 
@@ -55,14 +56,6 @@ class Scythe():
                          'territory': 4,
                          'resources': 3,
                          }
-
-
-class Resource(IntEnum):
-    FOOD = auto()
-    WOOD = auto()
-    METAL = auto()
-    OIL = auto()
-    WORKER = auto()
 
 
 class TopActionType(Enum):
@@ -130,38 +123,12 @@ class Structure(IntEnum):
     ARMORY = auto()
 
 
-class Terrain(IntEnum):
-    FARM = auto()
-    FOREST = auto()
-    MOUNTAIN = auto()
-    TUNDRA = auto()
-    VILLAGE = auto()
-    FACTORY = auto()
-    LAKE = auto()
-    HOME_BASE = auto()
-
-    @classmethod
-    def produces(cls, terrainType):
-        match terrainType:
-            case Terrain.HOME_BASE:
-                return None
-            case Terrain.FARM:
-                return Resource.FOOD
-            case Terrain.FOREST:
-                return Resource.WOOD
-            case Terrain.MOUNTAIN:
-                return Resource.METAL
-            case Terrain.TUNDRA:
-                return Resource.OIL
-            case Terrain.VILLAGE:
-                return Resource.WORKER
-
-
 class Popularity(Enum):
     POPULARITY = auto()
 
 
 COMBAT_CARDS_AVG = (16 * 2 + 12 * 3 + 8 * 4 + 6 * 5) / 42
+
 
 def make_minimal_opening_board() -> Board:
     """
@@ -231,7 +198,6 @@ class Faction:
     # Keep placeholders so the engine can reference them.
     special_rules: Tuple[str, ...] = ()
     unit_start: Tuple[str, ...] = ()
-    
 
 
 @dataclass(frozen=True)
@@ -266,7 +232,7 @@ def nordic_config() -> Faction:
         start_power=4,
         start_cards=1,
         special_rules=("TODO: Nordic riverwalk / swim rules",),
-        unit_start=Units(character="N_HOME",mechs=(),workers=(("N_FOREST", 1), ("N_TUNDRA", 1)),structures=()),
+        unit_start=Units(character="N_HOME", mechs=(), workers=(("N_FOREST", 1), ("N_TUNDRA", 1)), structures=()),
     )
 
 
@@ -276,8 +242,9 @@ def crimea_config() -> Faction:
         start_power=5,
         start_cards=0,
         special_rules=("TODO: ",),
-        unit_start=Units(character="C_HOME",mechs=(),workers=(("C_FARM", 1), ("C_VILLAGE", 1)),structures=()),
+        unit_start=Units(character="C_HOME", mechs=(), workers=(("C_FARM", 1), ("C_VILLAGE", 1)), structures=()),
     )
+
 
 def togawa_config() -> Faction:
     return Faction(
@@ -285,12 +252,12 @@ def togawa_config() -> Faction:
         start_power=0,
         start_cards=2,
         special_rules=("TODO: ",),
-        unit_start=Units(character="T_HOME",mechs=(),workers=(("T_FARM", 1), ("T_TUNDRA", 1)),structures=()),
+        unit_start=Units(character="T_HOME", mechs=(), workers=(("T_FARM", 1), ("T_TUNDRA", 1)), structures=()),
     )
 
 
 @dataclass(frozen=True)
-class IndustrialMat(PlayerMat): # Mat 1
+class IndustrialMat(PlayerMat):  # Mat 1
     name = "Industrial"
     start_coins = 4
     start_pop = 2
@@ -339,8 +306,9 @@ class IndustrialMat(PlayerMat): # Mat 1
                                                       ),)
         return prog
 
+
 @dataclass(frozen=True)
-class EngineeringMat(PlayerMat): # Mat 2
+class EngineeringMat(PlayerMat):  # Mat 2
     name = "Engineering"
     start_coins = 5
     start_pop = 2
@@ -356,7 +324,7 @@ class EngineeringMat(PlayerMat): # Mat 2
         BottomActionType.BUILD: {Resource.WOOD: 4},
         BottomActionType.ENLIST: {Resource.FOOD: 3},
     }
-    
+
     bottom_coin_reward = {
         BottomActionType.UPGRADE: 2,
         BottomActionType.DEPLOY: 0,
@@ -389,8 +357,9 @@ class EngineeringMat(PlayerMat): # Mat 2
                                                       ),)
         return prog
 
+
 @dataclass(frozen=True)
-class MilitantMat(PlayerMat): # Mat 2A
+class MilitantMat(PlayerMat):  # Mat 2A
     name = "Militant"
     start_coins = 4
     start_pop = 3
@@ -406,7 +375,7 @@ class MilitantMat(PlayerMat): # Mat 2A
         BottomActionType.BUILD: {Resource.WOOD: 4},
         BottomActionType.ENLIST: {Resource.FOOD: 3},
     }
-    
+
     bottom_coin_reward = {
         BottomActionType.UPGRADE: 0,
         BottomActionType.DEPLOY: 3,
@@ -439,8 +408,9 @@ class MilitantMat(PlayerMat): # Mat 2A
                                                       ),)
         return prog
 
+
 @dataclass(frozen=True)
-class PatrioticMat(PlayerMat): # Mat 3
+class PatrioticMat(PlayerMat):  # Mat 3
     name = "Patriotic"
     start_coins = 6
     start_pop = 2
@@ -456,7 +426,7 @@ class PatrioticMat(PlayerMat): # Mat 3
         BottomActionType.BUILD: {Resource.WOOD: 4},
         BottomActionType.ENLIST: {Resource.FOOD: 3},
     }
-    
+
     bottom_coin_reward = {
         BottomActionType.UPGRADE: 1,
         BottomActionType.DEPLOY: 3,
@@ -489,8 +459,9 @@ class PatrioticMat(PlayerMat): # Mat 3
                                                       ),)
         return prog
 
+
 @dataclass(frozen=True)
-class InnovativeMat(PlayerMat): # Mat 3A
+class InnovativeMat(PlayerMat):  # Mat 3A
     name = "Innovative"
     start_coins = 5
     start_pop = 3
@@ -506,7 +477,7 @@ class InnovativeMat(PlayerMat): # Mat 3A
         BottomActionType.BUILD: {Resource.WOOD: 4},
         BottomActionType.ENLIST: {Resource.FOOD: 3},
     }
-    
+
     bottom_coin_reward = {
         BottomActionType.UPGRADE: 3,
         BottomActionType.DEPLOY: 1,
@@ -542,6 +513,7 @@ class InnovativeMat(PlayerMat): # Mat 3A
 # -----------------------------
 # Game state
 # -----------------------------
+
 
 @dataclass(frozen=True)
 class Units:
@@ -900,7 +872,7 @@ class Engine:
             new_units = replace(s.units, character=dest_hid)
             # did we trigger an encounter?
             if s.board.hexes[dest_hid].has_encounter and dest_hid not in prog.encounters:
-                #print(f"moving a character to {dest_hid} with encounter!!")
+                # print(f"moving a character to {dest_hid} with encounter!!")
                 prog = replace(prog, encounters=prog.encounters + (dest_hid, ))
                 # BOOKMARK!! Test that this is working.
         elif unit_type == TopActionType.MOVE_UNIT_WORKER:
@@ -1413,6 +1385,7 @@ def make_start_state_general(faction_, mat_) -> GameState:
         last_top_action=None,
     )
 
+
 """
 def make_start_state_nordic_industrial() -> GameState:
     # board = make_minimal_opening_board()
@@ -1565,7 +1538,6 @@ def make_start_state_togawa_innovative() -> GameState:
     )"""
 
 
-
 # -----------------------------
 # Demo runner
 # -----------------------------
@@ -1591,7 +1563,7 @@ def summarize_state(s: GameState) -> str:
 
 if __name__ == "__main__":
     engine = Engine()
-    start = make_start_state_general(togawa_config,MilitantMat)
+    start = make_start_state_general(togawa_config, MilitantMat)
 
     lines = beam_search_openings(engine, start, turns=8, beam_width=1000)
 
