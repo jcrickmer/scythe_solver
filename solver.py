@@ -401,6 +401,108 @@ class InnovativeMat(PlayerMat):  # Mat 3A
         return prog
 
 
+@dataclass(frozen=True)
+class MechanicalMat(PlayerMat):  # Mat 4
+    name = "Mechanical"
+    start_coins = 6
+    start_pop = 3
+    pairings = {
+        TopActionType.TRADE: BottomActionType.UPGRADE,
+        TopActionType.BOLSTER: BottomActionType.DEPLOY,
+        TopActionType.MOVE: BottomActionType.BUILD,
+        TopActionType.PRODUCE: BottomActionType.ENLIST,
+    }
+    bottom_cost = {
+        BottomActionType.UPGRADE: {Resource.OIL: 3},
+        BottomActionType.DEPLOY: {Resource.METAL: 3},
+        BottomActionType.BUILD: {Resource.WOOD: 3},
+        BottomActionType.ENLIST: {Resource.FOOD: 4},
+    }
+
+    bottom_coin_reward = {
+        BottomActionType.UPGRADE: 0,
+        BottomActionType.DEPLOY: 2,
+        BottomActionType.BUILD: 2,
+        BottomActionType.ENLIST: 2,
+    }
+    bottom_bonus = {
+        BottomActionType.UPGRADE: BottomActionBonus.POWER,
+        BottomActionType.DEPLOY: BottomActionBonus.COIN,
+        BottomActionType.BUILD: BottomActionBonus.POPULARITY,
+        BottomActionType.ENLIST: BottomActionBonus.CARD,
+    }
+
+    def __init__(self):
+        pass
+
+    def init_progress(self):
+        prog = Progress(top_upgrade_opportunities=(TopUpgradeChoice.BOLSTER_MILITARY,
+                                                   TopUpgradeChoice.BOLSTER_CARD,
+                                                   TopUpgradeChoice.PRODUCE_RESOURCE,
+                                                   TopUpgradeChoice.MOVE_UNIT,
+                                                   TopUpgradeChoice.MOVE_COIN,
+                                                   TopUpgradeChoice.TRADE_POPULARITY),
+                        bottom_upgrade_opportunities=(BottomUpgradeChoice.UPGRADE_COST,
+                                                      BottomUpgradeChoice.DEPLOY_COST,
+                                                      BottomUpgradeChoice.DEPLOY_COST,
+                                                      BottomUpgradeChoice.BUILD_COST,
+                                                      BottomUpgradeChoice.ENLIST_COST,
+                                                      BottomUpgradeChoice.ENLIST_COST,
+                                                      ),)
+        return prog
+
+
+@dataclass(frozen=True)
+class AgriculturalMat(PlayerMat):  # Mat 5
+    name = "Agricultural"
+    start_coins = 7
+    start_pop = 4
+    pairings = {
+        TopActionType.MOVE: BottomActionType.UPGRADE,
+        TopActionType.TRADE: BottomActionType.DEPLOY,
+        TopActionType.PRODUCE: BottomActionType.BUILD,
+        TopActionType.BOLSTER: BottomActionType.ENLIST,
+    }
+    bottom_cost = {
+        BottomActionType.UPGRADE: {Resource.OIL: 2},
+        BottomActionType.DEPLOY: {Resource.METAL: 4},
+        BottomActionType.BUILD: {Resource.WOOD: 4},
+        BottomActionType.ENLIST: {Resource.FOOD: 3},
+    }
+
+    bottom_coin_reward = {
+        BottomActionType.UPGRADE: 1,
+        BottomActionType.DEPLOY: 0,
+        BottomActionType.BUILD: 2,
+        BottomActionType.ENLIST: 3,
+    }
+    bottom_bonus = {
+        BottomActionType.UPGRADE: BottomActionBonus.POWER,
+        BottomActionType.DEPLOY: BottomActionBonus.COIN,
+        BottomActionType.BUILD: BottomActionBonus.POPULARITY,
+        BottomActionType.ENLIST: BottomActionBonus.CARD,
+    }
+
+    def __init__(self):
+        pass
+
+    def init_progress(self):
+        prog = Progress(top_upgrade_opportunities=(TopUpgradeChoice.BOLSTER_MILITARY,
+                                                   TopUpgradeChoice.BOLSTER_CARD,
+                                                   TopUpgradeChoice.PRODUCE_RESOURCE,
+                                                   TopUpgradeChoice.MOVE_UNIT,
+                                                   TopUpgradeChoice.MOVE_COIN,
+                                                   TopUpgradeChoice.TRADE_POPULARITY),
+                        bottom_upgrade_opportunities=(BottomUpgradeChoice.DEPLOY_COST,
+                                                      BottomUpgradeChoice.DEPLOY_COST,
+                                                      BottomUpgradeChoice.BUILD_COST,
+                                                      BottomUpgradeChoice.BUILD_COST,
+                                                      BottomUpgradeChoice.ENLIST_COST,
+                                                      BottomUpgradeChoice.ENLIST_COST,
+                                                      ),)
+        return prog
+
+
 # -----------------------------
 # Action abstraction
 # -----------------------------
