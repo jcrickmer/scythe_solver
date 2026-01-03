@@ -19,6 +19,7 @@ from itertools import combinations
 import yaml
 from pathlib import Path
 import psutil
+from board import HexId, Hex, Board
 process = psutil.Process()
 # print(process.memory_info().rss)
 
@@ -161,39 +162,6 @@ class Popularity(Enum):
 
 
 COMBAT_CARDS_AVG = (16 * 2 + 12 * 3 + 8 * 4 + 6 * 5) / 42
-
-# -----------------------------
-# Board model (graph)
-# -----------------------------
-
-HexId = str
-
-
-@dataclass(frozen=True)
-class Hex:
-    hid: HexId
-    terrain: Terrain
-    neighbors: Tuple[HexId, ...] = ()
-    river_neighbors: Tuple[HexId, ...] = ()
-    has_encounter: bool = False
-    is_tunnel: bool = False
-    board_position: Tuple[int, int] = ()
-
-
-@dataclass(frozen=True)
-class Board:
-    """Graph-like board representation. Expand later with rivers, lakes, tunnels, etc."""
-    hexes: Dict[HexId, Hex]
-
-    def neighbors(self, hid: HexId) -> Tuple[HexId, ...]:
-        return self.hexes[hid].neighbors
-
-    def river_neighbors(self, hid: HexId) -> Tuple[HexId, ...]:
-        return self.hexes[hid].river_neighbors
-
-    def terrain(self, hid: HexId) -> Terrain:
-        return self.hexes[hid].terrain
-
 
 def make_minimal_opening_board() -> Board:
     """
