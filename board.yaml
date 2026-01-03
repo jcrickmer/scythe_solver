@@ -132,6 +132,12 @@ hexes:
     neighbors: [TNL_TUNDRA_0, N_MOUNTAIN, FACT_FOREST, TNL_FOREST, FACTORY, FACT_MOUNTAIN]
     board_position: [3,4]
 
+  TNL_FOREST:
+    terrain: FOREST
+    neighbors: [N_FARM, FACT_MOUNTAIN]
+    river_neighbors: [R_VILLAGE, N_MOUNTAIN, R_TUNDRA]
+    lake_neighbors: [LAKE_2]
+
   R_VILLAGE:
     terrain: VILLAGE
     neighbors: [R_HOME, R_TUNDRA, R_MOUNTAIN]
@@ -181,6 +187,7 @@ hexes:
     neighbors: [R_VILLAGE, R_MOUNTAIN]
     river_neighbors: [TNL_FOREST, FACT_MOUNTAIN, TNL_VILLAGE]
     lake_neighbors: [LAKE_5]
+    has_encounter: true
     board_position: [4, 5]
 
   R_MOUNTAIN:
@@ -210,6 +217,36 @@ hexes:
     is_tunnel: true
     board_position: [5, 2]
 
+  FACT_TUNDRA:
+    terrain: TUNDRA
+    neighbors: [FACTORY, TNL_FARM, VILLAGE_6_2, TNL_TUNDRA_1]
+    lake_neighbors: [LAKE_3, LAKE_4]
+    board_position: [5, 3]
+
+  LAKE_4:
+    terrain: LAKE
+    neighbors: [FACTORY, FACT_MOUNTAIN, FACT_TUNDRA, TNL_VILLAGE, TNL_TUNDRA_1, FOREST_6_4]
+    board_position: [5, 4]
+
+  TNL_VILLAGE:
+    terrain: VILLAGE
+    neighbors: [FACT_MOUNTAIN, FOREST_6_4, T_MOUNTAIN]
+    river_neighbors: [R_TUNDRA]
+    lake_neighbors: [LAKE_4, LAKE_5]
+    is_tunnel: true
+    board_position: [5, 5]
+
+  LAKE_5:
+    terrain: LAKE
+    neighbors: [R_TUNDRA, R_MOUNTAIN, TNL_VILLAGE, T_MOUNTAIN, T_TUNDRA]
+    board_position: [5,6]
+
+  S_MOUNTAIN:
+    terrain: MOUNTAIN
+    neighbors: [S_VILLAGE, S_HOME, S_TUNDRA]
+    river_neighbors: [FOREST_5_0, FOREST_5_1]
+    board_position: [6, 0]
+
   S_VILLAGE:
     terrain: VILLAGE
     neighbors: [S_MOUNTAIN, S_TUNDRA]
@@ -220,10 +257,11 @@ hexes:
 
   VILLAGE_6_2:
     terrain: VILLAGE
-    neighbors: [C_TUNDRA]
-    river_neighbors: [C_FARM]
-    board_position: [6, 2]
+    neighbors: [TNL_FARM, FACT_TUNDRA, TNL_TUNDRA_1]
+    river_neighbors: [S_VILLAGE, C_FARM]
+    lake_neighbors: [LAKE_6]
     has_encounter: true
+    board_position: [6, 2]
   
   TNL_TUNDRA_1:
     terrain: TUNDRA
@@ -235,27 +273,27 @@ hexes:
 
   FOREST_6_4:
     terrain: FOREST
-    neighbors: [C_TUNDRA, T_MOUNTAIN, T_VILLAGE]
+    neighbors: [TNL_VILLAGE, TNL_TUNDRA_1, T_MOUNTAIN, T_VILLAGE]
     river_neighbors: [C_MOUNTAIN]
+    lake_neighbors: [LAKE_4]
     board_position: [6, 4]
 
   T_MOUNTAIN:
     terrain: MOUNTAIN
-    neighbors: [T_FARM, T_TUNDRA, N_MOUNTAIN]
-    river_neighbors: []
+    neighbors: [TNL_VILLAGE, FOREST_6_4, T_FARM, T_TUNDRA, N_MOUNTAIN]
+    lake_neighbors: [LAKE_5]
     has_encounter: true
     board_position: [6, 5]
 
   T_TUNDRA:
     terrain: TUNDRA
     neighbors: [T_HOME, T_FARM, T_MOUNTAIN]
-    river_neighbors: [N_FARM, N_VILLAGE]
+    lake_neighbors: [LAKE_5]
     board_position: [6, 6]
 
   S_HOME:
     terrain: HOME_BASE
     neighbors: [S_MOUNTAIN, S_TUNDRA]
-    river_neighbors: []
     board_position: [7,0]
 
   S_TUNDRA:
@@ -272,14 +310,14 @@ hexes:
 
   C_FARM:
     terrain: FARM
-    neighbors: [C_VILLAGE, C_MOUNTAIN]
-    river_neighbors: [C_TUNDRA]
+    neighbors: [C_HOME, C_VILLAGE, C_MOUNTAIN]
+    river_neighbors: [VILLAGE_6_2, TNL_TUNDRA_1]
     board_position: [7, 3]
 
   C_MOUNTAIN:
     terrain: MOUNTAIN
     neighbors: [C_FARM, C_VILLAGE]
-    river_neighbors: [C_TUNDRA, FOREST_6_4, T_VILLAGE]
+    river_neighbors: [TNL_TUNDRA_1, FOREST_6_4, T_VILLAGE]
     has_encounter: true
     board_position: [7, 4]
 
