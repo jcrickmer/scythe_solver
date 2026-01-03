@@ -510,6 +510,107 @@ class InnovativeMat(PlayerMat):  # Mat 3A
                                                       ),)
         return prog
 
+@dataclass(frozen=True)
+class MechanicalMat(PlayerMat):  # Mat 4
+    name = "Mechanical"
+    start_coins = 6
+    start_pop = 3
+    pairings = {
+        TopActionType.TRADE: BottomActionType.UPGRADE,
+        TopActionType.BOLSTER: BottomActionType.DEPLOY,
+        TopActionType.MOVE: BottomActionType.BUILD,
+        TopActionType.PRODUCE: BottomActionType.ENLIST,
+    }
+    bottom_cost = {
+        BottomActionType.UPGRADE: {Resource.OIL: 3},
+        BottomActionType.DEPLOY: {Resource.METAL: 3},
+        BottomActionType.BUILD: {Resource.WOOD: 3},
+        BottomActionType.ENLIST: {Resource.FOOD: 4},
+    }
+
+    bottom_coin_reward = {
+        BottomActionType.UPGRADE: 0,
+        BottomActionType.DEPLOY: 2,
+        BottomActionType.BUILD: 2,
+        BottomActionType.ENLIST: 2,
+    }
+    bottom_bonus = {
+        BottomActionType.UPGRADE: BottomActionBonus.POWER,
+        BottomActionType.DEPLOY: BottomActionBonus.COIN,
+        BottomActionType.BUILD: BottomActionBonus.POPULARITY,
+        BottomActionType.ENLIST: BottomActionBonus.CARD,
+    }
+
+    def __init__(self):
+        pass
+
+    def init_progress(self):
+        prog = Progress(top_upgrade_opportunities=(TopUpgradeChoice.BOLSTER_MILITARY,
+                                                   TopUpgradeChoice.BOLSTER_CARD,
+                                                   TopUpgradeChoice.PRODUCE_RESOURCE,
+                                                   TopUpgradeChoice.MOVE_UNIT,
+                                                   TopUpgradeChoice.MOVE_COIN,
+                                                   TopUpgradeChoice.TRADE_POPULARITY),
+                        bottom_upgrade_opportunities=(BottomUpgradeChoice.UPGRADE_COST,
+                                                      BottomUpgradeChoice.DEPLOY_COST,
+                                                      BottomUpgradeChoice.DEPLOY_COST,
+                                                      BottomUpgradeChoice.BUILD_COST,
+                                                      BottomUpgradeChoice.ENLIST_COST,
+                                                      BottomUpgradeChoice.ENLIST_COST,
+                                                      ),)
+        return prog
+
+@dataclass(frozen=True)
+class AgriculturalMat(PlayerMat):  # Mat 5
+    name = "Agricultural"
+    start_coins = 7
+    start_pop = 4
+    pairings = {
+        TopActionType.MOVE: BottomActionType.UPGRADE,
+        TopActionType.TRADE: BottomActionType.DEPLOY,
+        TopActionType.PRODUCE: BottomActionType.BUILD,
+        TopActionType.BOLSTER: BottomActionType.ENLIST,
+    }
+    bottom_cost = {
+        BottomActionType.UPGRADE: {Resource.OIL: 2},
+        BottomActionType.DEPLOY: {Resource.METAL: 4},
+        BottomActionType.BUILD: {Resource.WOOD: 4},
+        BottomActionType.ENLIST: {Resource.FOOD: 3},
+    }
+
+    bottom_coin_reward = {
+        BottomActionType.UPGRADE: 1,
+        BottomActionType.DEPLOY: 0,
+        BottomActionType.BUILD: 2,
+        BottomActionType.ENLIST: 3,
+    }
+    bottom_bonus = {
+        BottomActionType.UPGRADE: BottomActionBonus.POWER,
+        BottomActionType.DEPLOY: BottomActionBonus.COIN,
+        BottomActionType.BUILD: BottomActionBonus.POPULARITY,
+        BottomActionType.ENLIST: BottomActionBonus.CARD,
+    }
+
+    def __init__(self):
+        pass
+
+    def init_progress(self):
+        prog = Progress(top_upgrade_opportunities=(TopUpgradeChoice.BOLSTER_MILITARY,
+                                                   TopUpgradeChoice.BOLSTER_CARD,
+                                                   TopUpgradeChoice.PRODUCE_RESOURCE,
+                                                   TopUpgradeChoice.MOVE_UNIT,
+                                                   TopUpgradeChoice.MOVE_COIN,
+                                                   TopUpgradeChoice.TRADE_POPULARITY),
+                        bottom_upgrade_opportunities=(BottomUpgradeChoice.DEPLOY_COST,
+                                                      BottomUpgradeChoice.DEPLOY_COST,
+                                                      BottomUpgradeChoice.BUILD_COST,
+                                                      BottomUpgradeChoice.BUILD_COST,
+                                                      BottomUpgradeChoice.ENLIST_COST,
+                                                      BottomUpgradeChoice.ENLIST_COST,
+                                                      ),)
+        return prog
+
+
 # -----------------------------
 # Game state
 # -----------------------------
@@ -1260,158 +1361,6 @@ def make_start_state_general(faction_, mat_) -> GameState:
         turn=0,
         last_top_action=None,
     )
-
-
-"""
-def make_start_state_nordic_industrial() -> GameState:
-    # board = make_minimal_opening_board()
-    board = load_board_from_yaml("board.yaml")
-
-    faction = nordic_config()
-    # mat = industrial_mat_config()
-    mat = IndustrialMat()
-
-    # Placeholder start:
-    # - Character starts at home
-    # - 2 workers on home (tuple of locations)
-    # - 0 mechs
-    # - starting resources/coins/power/popularity: fill in true values later
-    units = faction.unit_start
-    econ = Economy(
-        coins=4,
-        power=4,
-        popularity=2,
-        resources=tuple(sorted({Resource.FOOD: 0, Resource.WOOD: 0, Resource.METAL: 0, Resource.OIL: 0, Resource.WORKER: 0}.items(),
-                               key=lambda x: x[0].value)),
-        combat_cards=1,
-    )
-    prog = mat.init_progress()
-
-    return GameState(
-        faction=faction,
-        mat=mat,
-        board=board,
-        units=units,
-        econ=econ,
-        prog=prog,
-        turn=0,
-        last_top_action=None,
-    )
-
-
-def make_start_state_crimea_industrial() -> GameState:
-    board = make_minimal_opening_board()
-    faction = crimea_config()
-    # mat = industrial_mat_config()
-    mat = IndustrialMat()
-
-    # Placeholder start:
-    # - Character starts at home
-    # - 2 workers on home (tuple of locations)
-    # - 0 mechs
-    # - starting resources/coins/power/popularity: fill in true values later
-    units = Units(
-        character="C_HOME",
-        mechs=(),
-        workers=(("C_VILLAGE", 1), ("C_FARM", 1)),
-        structures=()
-    )
-    econ = Economy(
-        coins=4,
-        power=5,
-        popularity=2,
-        resources=tuple(sorted({Resource.FOOD: 0, Resource.WOOD: 0, Resource.METAL: 0, Resource.OIL: 0, Resource.WORKER: 0}.items(),
-                               key=lambda x: x[0].value)),
-        combat_cards=0,
-    )
-    prog = mat.init_progress()
-
-    return GameState(
-        faction=faction,
-        mat=mat,
-        board=board,
-        units=units,
-        econ=econ,
-        prog=prog,
-        turn=0,
-        last_top_action=None,
-    )
-
-def make_start_state_togawa_industrial() -> GameState:
-    board = make_minimal_opening_board()
-    faction = togawa_config()
-    # mat = industrial_mat_config()
-    mat = IndustrialMat()
-
-    # Placeholder start:
-    # - Character starts at home
-    # - 2 workers on home (tuple of locations)
-    # - 0 mechs
-    # - starting resources/coins/power/popularity: fill in true values later
-    units = Units(
-        character="T_HOME",
-        mechs=(),
-        workers=(("T_TUNDRA", 1), ("T_FARM", 1)),
-        structures=()
-    )
-    econ = Economy(
-        coins=4,
-        power=0,
-        popularity=2,
-        resources=tuple(sorted({Resource.FOOD: 0, Resource.WOOD: 0, Resource.METAL: 0, Resource.OIL: 0, Resource.WORKER: 0}.items(),
-                               key=lambda x: x[0].value)),
-        combat_cards=2,
-    )
-    prog = mat.init_progress()
-
-    return GameState(
-        faction=faction,
-        mat=mat,
-        board=board,
-        units=units,
-        econ=econ,
-        prog=prog,
-        turn=0,
-        last_top_action=None,
-    )
-
-def make_start_state_togawa_innovative() -> GameState:
-    board = make_minimal_opening_board()
-    faction = togawa_config()
-    # mat = industrial_mat_config()
-    mat = InnovativeMat()
-
-    # Placeholder start:
-    # - Character starts at home
-    # - 2 workers on home (tuple of locations)
-    # - 0 mechs
-    # - starting resources/coins/power/popularity: fill in true values later
-    units = Units(
-        character="T_HOME",
-        mechs=(),
-        workers=(("T_TUNDRA", 1), ("T_FARM", 1)),
-        structures=()
-    )
-    econ = Economy(
-        coins=5,
-        power=0,
-        popularity=3,
-        resources=tuple(sorted({Resource.FOOD: 0, Resource.WOOD: 0, Resource.METAL: 0, Resource.OIL: 0, Resource.WORKER: 0}.items(),
-                               key=lambda x: x[0].value)),
-        combat_cards=2,
-    )
-    prog = mat.init_progress()
-
-    return GameState(
-        faction=faction,
-        mat=mat,
-        board=board,
-        units=units,
-        econ=econ,
-        prog=prog,
-        turn=0,
-        last_top_action=None,
-    )"""
 
 
 # -----------------------------
