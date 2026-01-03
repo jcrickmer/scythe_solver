@@ -22,7 +22,9 @@ import psutil
 from board import HexId, Hex, Board, Terrain
 from units import Resource
 import scorer
-from gamestate import GameState
+from gamestate import GameState, Units, Progress, Economy
+from factions import Faction, togawa_config, nordic_config
+from units import TopActionType, BottomActionType, BottomActionBonus, TopUpgradeChoice, BottomUpgradeChoice, Popularity, Structure
 
 process = psutil.Process()
 # print(process.memory_info().rss)
@@ -59,75 +61,6 @@ class Scythe():
                          'territory': 4,
                          'resources': 3,
                          }
-
-
-class TopActionType(Enum):
-    MOVE = auto()
-    TRADE = auto()
-    PRODUCE = auto()
-    BOLSTER = auto()
-
-    # for MOVE parameters (unit_type, source_hid, dest_hid, unit_count)
-    MOVE_PARAM_UNIT_TYPE = 0
-    MOVE_PARAM_SOURCE_HID = 1
-    MOVE_PARAM_DEST_HID = 2
-    MOVE_PARAM_UNIT_COUNT = 3
-    MOVE_UNIT_CHARACTER = 'CHAR'
-    MOVE_UNIT_MECH = 'MECH'
-    MOVE_UNIT_WORKER = 'WORKER'
-
-
-class BottomActionType(Enum):
-    UPGRADE = auto()
-    DEPLOY = auto()
-    BUILD = auto()
-    ENLIST = auto()
-
-
-class BottomActionBonus(Enum):
-    POWER = auto()
-    COIN = auto()
-    POPULARITY = auto()
-    CARD = auto()
-
-
-class TopUpgradeChoice(Enum):
-    BOLSTER_MILITARY = auto()
-    BOLSTER_CARD = auto()
-    PRODUCE_RESOURCE = auto()
-    TRADE_POPULARITY = auto()
-    MOVE_UNIT = auto()
-    MOVE_COIN = auto()
-
-
-class BottomUpgradeChoice(Enum):
-    UPGRADE_COST = auto()
-    DEPLOY_COST = auto()
-    BUILD_COST = auto()
-    ENLIST_COST = auto()
-
-    @classmethod
-    def action_type(cls, choice) -> BottomActionType:
-        match choice:
-            case BottomUpgradeChoice.UPGRADE_COST:
-                return BottomActionType.UPGRADE
-            case BottomUpgradeChoice.DEPLOY_COST:
-                return BottomActionType.DEPLOY
-            case BottomUpgradeChoice.BUILD_COST:
-                return BottomActionType.BUILD
-            case BottomUpgradeChoice.ENLIST_COST:
-                return BottomActionType.ENLIST
-
-
-class Structure(IntEnum):
-    MONUMENT = auto()
-    MILL = auto()
-    MINE = auto()
-    ARMORY = auto()
-
-
-class Popularity(Enum):
-    POPULARITY = auto()
 
 
 def make_minimal_opening_board() -> Board:
@@ -188,19 +121,6 @@ def load_board_from_yaml(path: str | Path) -> Board:
 # -----------------------------
 
 @dataclass(frozen=True)
-class Faction:
-    name: str
-    start_power: int
-    start_cards: int
-    # Nordic specifics you might later encode:
-    # - riverwalk rules
-    # - "Swim" (workers may move into/through lakes?) etc.
-    # Keep placeholders so the engine can reference them.
-    special_rules: Tuple[str, ...] = ()
-    unit_start: Tuple[str, ...] = ()
-
-
-@dataclass(frozen=True)
 class PlayerMat:
     name: str
 
@@ -224,36 +144,6 @@ class PlayerMat:
 
     def init_progress(self):
         return Progress()
-
-
-def nordic_config() -> Faction:
-    return Faction(
-        name="Nordic",
-        start_power=4,
-        start_cards=1,
-        special_rules=("TODO: Nordic riverwalk / swim rules",),
-        unit_start=Units(character="N_HOME", mechs=(), workers=(("N_FOREST", 1), ("N_TUNDRA", 1)), structures=()),
-    )
-
-
-def crimea_config() -> Faction:
-    return Faction(
-        name="Crimea",
-        start_power=5,
-        start_cards=0,
-        special_rules=("TODO: ",),
-        unit_start=Units(character="C_HOME", mechs=(), workers=(("C_FARM", 1), ("C_VILLAGE", 1)), structures=()),
-    )
-
-
-def togawa_config() -> Faction:
-    return Faction(
-        name="Togawa",
-        start_power=0,
-        start_cards=2,
-        special_rules=("TODO: ",),
-        unit_start=Units(character="T_HOME", mechs=(), workers=(("T_FARM", 1), ("T_TUNDRA", 1)), structures=()),
-    )
 
 
 @dataclass(frozen=True)
@@ -509,87 +399,6 @@ class InnovativeMat(PlayerMat):  # Mat 3A
                                                       BottomUpgradeChoice.ENLIST_COST,
                                                       ),)
         return prog
-
-# -----------------------------
-# Game state
-# -----------------------------
-
-
-@dataclass(frozen=True)
-class Units:
-    """Positions of units. Keep simple for openings."""
-    character: HexId
-    mechs: Tuple[Tuple[HexId, int], ...] = ()
-    # store workers as a multiset (hid repeated) or a count map for compactness
-    workers: Tuple[Tuple[HexId, int], ...] = ()
-    structures: Tuple[Tuple[Structure, HexId], ...] = ()
-
-    def worker_count(self):
-        return sum(value for _, value in self.workers)
-
-    def territories_controlled(self):
-        return set(key for key, _ in self.workers) | set([self.character]) | set(self.mechs)
-
-
-@dataclass(frozen=True)
-class Economy:
-    coins: int = 0
-    power: int = 0
-    popularity: int = 0
-    resources: Tuple[Tuple[Resource, int], ...] = ()
-    combat_cards: int = 0
-
-    def res_dict(self) -> Dict[Resource, int]:
-        return dict(self.resources)
-
-    def with_res(self, new_res: Dict[Resource, int]) -> "Economy":
-        return replace(self, resources=tuple(sorted(new_res.items(), key=lambda x: x[0].value)))
-
-
-@dataclass(frozen=True)
-class Progress:
-    upgrades_done: int = 0
-    mechs_deployed: int = 0
-    structures_built: int = 0
-    enlists: int = 0
-    top_upgrade_opportunities: Tuple[TopUpgradeChoice] = ()
-    bottom_upgrade_opportunities: Tuple = ()
-    encounters: Tuple[HexId] = ()
-
-    # top actions that can be modified by upgrades
-    bolster_modifier: int = 0
-    combat_cards_modifier: int = 0
-    produce_modifier: int = 0
-    move_modifier: int = 0
-    gain_modifier: int = 0
-    popularity_modifier: int = 0
-
-    # bottom actions that can be modified by upgrades
-    bottom_modifiers: Tuple[Tuple[BottomActionType, int], ...] = ([BottomActionType.BUILD, 0],
-                                                                  [BottomActionType.DEPLOY, 0],
-                                                                  [BottomActionType.UPGRADE, 0],
-                                                                  [BottomActionType.ENLIST, 0])
-
-    # On the Faction Mat, which of the 4 enlist bonuses have been taken
-    enlist_power_bonus: bool = False
-    enlist_coin_bonus: bool = False
-    enlist_popularity_bonus: bool = False
-    enlist_card_bonus: bool = False
-
-    # On the Player Mat, each BottomAction can have a bonus becuase of past Enlist actions
-    bottom_bonuses: Tuple[BottomActionType] = ()
-
-    # Track “which bottom actions have been upgraded” etc. later.
-    def stars_earned(self):
-        stars = 0
-        if self.upgrades_done == 6:
-            stars = stars + 1
-        if self.mechs_deployed == 4:
-            stars = stars + 1
-        if self.structures_built == 4:
-            stars = stars + 1
-
-        return stars
 
 
 # -----------------------------
@@ -1262,158 +1071,6 @@ def make_start_state_general(faction_, mat_) -> GameState:
     )
 
 
-"""
-def make_start_state_nordic_industrial() -> GameState:
-    # board = make_minimal_opening_board()
-    board = load_board_from_yaml("board.yaml")
-
-    faction = nordic_config()
-    # mat = industrial_mat_config()
-    mat = IndustrialMat()
-
-    # Placeholder start:
-    # - Character starts at home
-    # - 2 workers on home (tuple of locations)
-    # - 0 mechs
-    # - starting resources/coins/power/popularity: fill in true values later
-    units = faction.unit_start
-    econ = Economy(
-        coins=4,
-        power=4,
-        popularity=2,
-        resources=tuple(sorted({Resource.FOOD: 0, Resource.WOOD: 0, Resource.METAL: 0, Resource.OIL: 0, Resource.WORKER: 0}.items(),
-                               key=lambda x: x[0].value)),
-        combat_cards=1,
-    )
-    prog = mat.init_progress()
-
-    return GameState(
-        faction=faction,
-        mat=mat,
-        board=board,
-        units=units,
-        econ=econ,
-        prog=prog,
-        turn=0,
-        last_top_action=None,
-    )
-
-
-def make_start_state_crimea_industrial() -> GameState:
-    board = make_minimal_opening_board()
-    faction = crimea_config()
-    # mat = industrial_mat_config()
-    mat = IndustrialMat()
-
-    # Placeholder start:
-    # - Character starts at home
-    # - 2 workers on home (tuple of locations)
-    # - 0 mechs
-    # - starting resources/coins/power/popularity: fill in true values later
-    units = Units(
-        character="C_HOME",
-        mechs=(),
-        workers=(("C_VILLAGE", 1), ("C_FARM", 1)),
-        structures=()
-    )
-    econ = Economy(
-        coins=4,
-        power=5,
-        popularity=2,
-        resources=tuple(sorted({Resource.FOOD: 0, Resource.WOOD: 0, Resource.METAL: 0, Resource.OIL: 0, Resource.WORKER: 0}.items(),
-                               key=lambda x: x[0].value)),
-        combat_cards=0,
-    )
-    prog = mat.init_progress()
-
-    return GameState(
-        faction=faction,
-        mat=mat,
-        board=board,
-        units=units,
-        econ=econ,
-        prog=prog,
-        turn=0,
-        last_top_action=None,
-    )
-
-def make_start_state_togawa_industrial() -> GameState:
-    board = make_minimal_opening_board()
-    faction = togawa_config()
-    # mat = industrial_mat_config()
-    mat = IndustrialMat()
-
-    # Placeholder start:
-    # - Character starts at home
-    # - 2 workers on home (tuple of locations)
-    # - 0 mechs
-    # - starting resources/coins/power/popularity: fill in true values later
-    units = Units(
-        character="T_HOME",
-        mechs=(),
-        workers=(("T_TUNDRA", 1), ("T_FARM", 1)),
-        structures=()
-    )
-    econ = Economy(
-        coins=4,
-        power=0,
-        popularity=2,
-        resources=tuple(sorted({Resource.FOOD: 0, Resource.WOOD: 0, Resource.METAL: 0, Resource.OIL: 0, Resource.WORKER: 0}.items(),
-                               key=lambda x: x[0].value)),
-        combat_cards=2,
-    )
-    prog = mat.init_progress()
-
-    return GameState(
-        faction=faction,
-        mat=mat,
-        board=board,
-        units=units,
-        econ=econ,
-        prog=prog,
-        turn=0,
-        last_top_action=None,
-    )
-
-def make_start_state_togawa_innovative() -> GameState:
-    board = make_minimal_opening_board()
-    faction = togawa_config()
-    # mat = industrial_mat_config()
-    mat = InnovativeMat()
-
-    # Placeholder start:
-    # - Character starts at home
-    # - 2 workers on home (tuple of locations)
-    # - 0 mechs
-    # - starting resources/coins/power/popularity: fill in true values later
-    units = Units(
-        character="T_HOME",
-        mechs=(),
-        workers=(("T_TUNDRA", 1), ("T_FARM", 1)),
-        structures=()
-    )
-    econ = Economy(
-        coins=5,
-        power=0,
-        popularity=3,
-        resources=tuple(sorted({Resource.FOOD: 0, Resource.WOOD: 0, Resource.METAL: 0, Resource.OIL: 0, Resource.WORKER: 0}.items(),
-                               key=lambda x: x[0].value)),
-        combat_cards=2,
-    )
-    prog = mat.init_progress()
-
-    return GameState(
-        faction=faction,
-        mat=mat,
-        board=board,
-        units=units,
-        econ=econ,
-        prog=prog,
-        turn=0,
-        last_top_action=None,
-    )"""
-
-
 # -----------------------------
 # Demo runner
 # -----------------------------
@@ -1439,7 +1096,8 @@ def summarize_state(s: GameState) -> str:
 
 if __name__ == "__main__":
     engine = Engine()
-    start = make_start_state_general(togawa_config, MilitantMat)
+    # start = make_start_state_general(togawa_config, MilitantMat)
+    start = make_start_state_general(nordic_config, MilitantMat)
 
     lines = beam_search_openings(engine, start, turns=8, beam_width=1000)
 
