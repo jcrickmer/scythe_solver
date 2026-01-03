@@ -103,3 +103,9 @@ hexes:
     is_tunnel: true
     board_position: [6,3]
     
+  VILLAGE_6_2:
+    terrain: VILLAGE
+    neighbors: [C_TUNDRA]
+    river_neighbors: [C_FARM]
+    board_position: [6, 2]
+    has_encounter: true
