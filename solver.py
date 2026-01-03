@@ -16,6 +16,8 @@ import heapq
 import math
 import statistics
 from itertools import combinations
+import yaml
+from pathlib import Path
 import psutil
 process = psutil.Process()
 #print(process.memory_info().rss)
@@ -204,6 +206,25 @@ def make_minimal_opening_board() -> Board:
                           
     }
     return Board(hexes=hx)
+
+def load_board_from_yaml(path: str | Path) -> Board:
+    with open(path, "r", encoding="utf-8") as f:
+        data = yaml.safe_load(f)
+
+    hexes: dict[str, Hex] = {}
+
+    for hid, spec in data["hexes"].items():
+        hexes[hid] = Hex(
+            hid=hid,
+            terrain=Terrain[spec["terrain"]],
+            neighbors=tuple(spec.get("neighbors", [])),
+            river_neighbors=tuple(spec.get("river_neighbors", [])),
+            has_encounter=spec.get("has_encounter", False),
+            is_tunnel=spec.get("is_tunnel", False),
+            board_position=tuple(spec.get("board_position", (0, 0))),
+        )
+
+    return Board(hexes=hexes)
 
 
 # -----------------------------
@@ -1119,7 +1140,9 @@ def beam_search_openings(
 # -----------------------------
 
 def make_start_state_nordic_industrial() -> GameState:
-    board = make_minimal_opening_board()
+    #board = make_minimal_opening_board()
+    board = load_board_from_yaml("board.yaml")
+
     faction = nordic_config()
     #mat = industrial_mat_config()
     mat = IndustrialMat()
