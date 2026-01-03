@@ -1,13 +1,10 @@
 #!python
 """
-Scythe opening explorer (skeleton)
+Scythe opening explorer
 - Focus: first N turns optimization (single-player, no combat)
 - Starting scenario: Nordic Kingdoms + Industrial player mat
 
-This is intentionally a *framework*: it enforces turn structure, state copying, hashing,
-action definitions, and search. You’ll fill in the specific rules over time.
-
-Python 3.11+ recommended.
+Python 3.12+ recommended.
 """
 
 from __future__ import annotations
@@ -18,6 +15,7 @@ from typing import Dict, FrozenSet, Iterable, List, Optional, Sequence, Tuple, C
 import heapq
 import math
 import statistics
+from itertools import combinations
 import psutil
 process = psutil.Process()
 #print(process.memory_info().rss)
@@ -83,6 +81,12 @@ class BottomActionType(Enum):
     BUILD = auto()
     ENLIST = auto()
 
+class BottomActionBonus(Enum):
+    POWER = auto()
+    COIN = auto()
+    POPULARITY = auto()
+    CARD = auto()
+
 class TopUpgradeChoice(Enum):
     BOLSTER_MILITARY = auto()
     BOLSTER_CARD = auto()
@@ -114,7 +118,7 @@ class Structure(IntEnum):
     MINE = auto()
     ARMORY = auto()
     
-class Terrain(Enum):
+class Terrain(IntEnum):
     FARM = auto()
     FOREST = auto()
     MOUNTAIN = auto()
@@ -138,23 +142,7 @@ class Terrain(Enum):
             case Terrain.TUNDRA:
                 return Resource.OIL
             case Terrain.VILLAGE:
-                # Village normally produces workers, not resources — leave TODO.
                 return Resource.WORKER
-        '''
-        if terrainType == Terrain.HOME_BASE:
-            return None
-        if terrainType == Terrain.FARM:
-            return Resource.FOOD
-        elif terrainType == Terrain.FOREST:
-            return Resource.WOOD
-        elif terrainType == Terrain.MOUNTAIN:
-            return Resource.METAL
-        elif terrainType == Terrain.TUNDRA:
-            return Resource.OIL
-        elif terrainType == Terrain.VILLAGE:
-            # Village normally produces workers, not resources — leave TODO.
-            return Resource.WORKER
-        '''
 
 class Popularity(Enum):
     POPULARITY = auto()
@@ -205,9 +193,15 @@ def make_minimal_opening_board() -> Board:
         "N_FOREST":   Hex("N_FOREST",   Terrain.FOREST, neighbors=("N_HOME", "N_TUNDRA", "N_MOUNTAIN",), river_neighbors=('A_VILLAGE', 'TUNDRA_2_3'), board_position=(1,4)),
         "N_TUNDRA":   Hex("N_TUNDRA",   Terrain.TUNDRA, neighbors=("N_HOME", "N_FOREST", "N_MOUNTAIN",), river_neighbors=('N_FARM','N_VILLAGE'), board_position=(1,5)),
         "N_VILLAGE":  Hex("N_VILLAGE",  Terrain.VILLAGE, neighbors=("N_FARM",), river_neighbors=('N_TUNDRA',), board_position=(1,6)),
-        "TUNDRA_2_3": Hex("TUNDRA_2_3", Terrain.MOUNTAIN, neighbors=(), river_neighbors=('A_VILLAGE','N_FOREST','N_MOUNTAIN',), is_tunnel=True, board_position=(2,3)),
+        "TUNDRA_2_3": Hex("TUNDRA_2_3", Terrain.TUNDRA, neighbors=(), river_neighbors=('A_VILLAGE','N_FOREST','N_MOUNTAIN',), is_tunnel=True, board_position=(2,3)),
         "N_MOUNTAIN": Hex("N_MOUNTAIN", Terrain.MOUNTAIN, neighbors=("N_FOREST", "N_TUNDRA",), has_encounter=True, board_position=(2,4)),
         "N_FARM":     Hex("N_FARM",     Terrain.FARM, neighbors=("N_VILLAGE",), river_neighbors=('N_TUNDRA', 'N_MOUNTAIN',), board_position=(2, 5)),
+
+        "C_HOME":     Hex("C_HOME",     Terrain.HOME_BASE, neighbors=("C_FARM", "C_VILLAGE"), board_position=(9,1)), #REVISIT board position
+        "C_FARM":     Hex("C_FARM",     Terrain.FARM, neighbors=("C_HOME", "C_VILLAGE", "C_MOUNTAIN"), river_neighbors=("C_TUNDRA"), board_position=(9,2)), #REVISIT board position
+        "C_VILLAGE":  Hex("C_VILLAGE",  Terrain.VILLAGE, neighbors=("C_HOME", "C_FARM", "C_MOUNTAIN"), river_neighbors=(), board_position=(9,3)), #REVISIT board position
+        "C_MOUNTAIN": Hex("C_MOUNTAIN", Terrain.MOUNTAIN, neighbors=("C_FARM", "C_VILLAGE"), river_neighbors=("FOREST"), board_position=(9,4)), #REVISIT board position
+                          
     }
     return Board(hexes=hx)
 
@@ -238,7 +232,8 @@ class PlayerMat:
     # These are placeholders; you’ll fill in the real Industrial mat values.
     bottom_cost: Dict[BottomActionType, Dict[Resource, int]]
     bottom_coin_reward: Dict[BottomActionType, int]
-
+    bottom_bonus: Dict[BottomActionType, BottomActionBonus]
+    
     # Upgrades affect either top costs/effects or bottom costs/rewards
     # Keep it abstract for now.
     # Later: implement a mapping of "upgrade slots" -> (what it improves).
@@ -251,6 +246,11 @@ class PlayerMat:
 def nordic_config() -> Faction:
     return Faction(
         name="Nordic",
+        special_rules=("TODO: Nordic riverwalk / swim rules",),
+    )
+def crimea_config() -> Faction:
+    return Faction(
+        name="Crimea",
         special_rules=("TODO: Nordic riverwalk / swim rules",),
     )
 
@@ -277,7 +277,13 @@ class IndustrialMat(PlayerMat):
         BottomActionType.BUILD: 1,
         BottomActionType.ENLIST: 0,
     }
-
+    bottom_bonus = {
+        BottomActionType.UPGRADE: BottomActionBonus.POWER,
+        BottomActionType.DEPLOY: BottomActionBonus.COIN,
+        BottomActionType.BUILD: BottomActionBonus.POPULARITY,
+        BottomActionType.ENLIST: BottomActionBonus.CARD,
+    }
+    
     def __init__(self):
         pass
     
@@ -306,7 +312,7 @@ class IndustrialMat(PlayerMat):
 class Units:
     """Positions of units. Keep simple for openings."""
     character: HexId
-    mechs: Tuple[HexId, ...] = ()
+    mechs: Tuple[Tuple[HexId, int], ...] = ()
     # store workers as a multiset (hid repeated) or a count map for compactness
     workers: Tuple[Tuple[HexId, int], ...] = ()
     structures: Tuple[Tuple[Structure, HexId], ...] = ()
@@ -338,7 +344,7 @@ class Progress:
     mechs_deployed: int = 0
     structures_built: int = 0
     enlists: int = 0
-    top_upgrade_opportunities: Tuple = ()
+    top_upgrade_opportunities: Tuple[TopUpgradeChoice] = ()
     bottom_upgrade_opportunities: Tuple = ()
 
     # top actions that can be modified by upgrades
@@ -350,11 +356,20 @@ class Progress:
     popularity_modifier: int = 0
 
     # bottom actions that can be modified by upgrades
-    bottom_modifiers: Tuple[Tuple[BottomActionChoice, int], ...] = ([BottomActionType.BUILD, 0],
-                                                                    [BottomActionType.DEPLOY, 0],
-                                                                    [BottomActionType.UPGRADE, 0],
-                                                                    [BottomActionType.ENLIST, 0])
-    
+    bottom_modifiers: Tuple[Tuple[BottomActionType, int], ...] = ([BottomActionType.BUILD, 0],
+                                                                  [BottomActionType.DEPLOY, 0],
+                                                                  [BottomActionType.UPGRADE, 0],
+                                                                  [BottomActionType.ENLIST, 0])
+
+    # On the Faction Mat, which of the 4 enlist bonuses have been taken
+    enlist_power_bonus: bool = False
+    enlist_coin_bonus: bool = False
+    enlist_popularity_bonus: bool = False
+    enlist_card_bonus: bool = False
+
+    # On the Player Mat, each BottomAction can have a bonus becuase of past Enlist actions
+    bottom_bonuses: Tuple[BottomActionType] = ()
+
     # Track “which bottom actions have been upgraded” etc. later.
     def stars_earned(self):
         stars = 0
@@ -392,7 +407,9 @@ class GameState:
         for (ba, mod) in self.prog.bottom_modifiers:
             if ba == bottom_action:
                 cost_modifier = mod
-        return {k: v + cost_modifier for k, v in cost.items()}
+        result = {k: v + cost_modifier for k, v in cost.items()}
+        #print("bottom_action_cost: {}".format(result))
+        return result
 
 # -----------------------------
 # Action abstraction
@@ -518,23 +535,88 @@ class Engine:
         return result
 
     def _legal_produce_choices(self, s: GameState) -> List[TurnChoice]:
-        # Skeleton: in real rules, produce happens on worker hexes (and home base) with limits.
-        # Start with a “produce as much as allowed” default.
-        # we can produce on up to 4 hexes, depending on where workers are and where the mill is. Starting with hard-coded to 2. REVISIT
-        result = []
-        for (hid, worker_count) in s.units.workers:
-            #print("Evaluating hex {} with count {}".format(hid, worker_count))
-            t = s.board.terrain(hid)
-            # REVISIT - hard coded to 2 hexes at this point, no Mill
-            sub_worker_hexes = tuple(pair for pair in s.units.workers if pair[0] != hid)
-            for (hid2, worker_count2) in sub_worker_hexes:
-                t2 = s.board.terrain(hid2)
-                # REVISIT - add optimization here to sort the params so that we don't generate the same options multiple times. we need a smaller and more optimizaed decision space. See the sorted() action on _legal_trade_choices
-                result.append(TurnChoice(TopActionType.PRODUCE, params=({Terrain.produces(t): worker_count},
-                                                                        {Terrain.produces(t2): worker_count2})))
-        
+        result: List[TurnChoice] = []
+
+        # --- Production limit: base 2 + upgrades (per your Progress model) ---
+        production_limit = 2 + s.prog.produce_modifier  # or s.prog.production_limit if you renamed it
+
+        # --- Mill hex (if any) ---
+        mill_hex: Optional[HexId] = None
+        for struct, hid in s.units.structures:
+            if struct == Structure.MILL:
+                mill_hex = hid
+                break
+
+        # --- Current worker slots remaining (cap 8) ---
+        current_workers = s.units.worker_count()
+        remaining_slots = max(0, 8 - current_workers)
+
+        # --- Eligible producer hexes: (hid, base_count, produced_resource, mill_bonus_on_this_hex?) ---
+        eligible: List[Tuple[HexId, int, Resource, bool]] = []
+        for hid, worker_count in s.units.workers:
+            terr = s.board.terrain(hid)
+            produced = Terrain.produces(terr)
+            if produced is None:
+                continue
+            eligible.append((hid, worker_count, produced, (mill_hex == hid)))
+
+        if not eligible or production_limit <= 0:
+            return result
+
+        kmax = min(production_limit, len(eligible))
+
+        # We'll generate "up to kmax" territories. If you want to allow producing on 0 territories,
+        # add an explicit TurnChoice for that, but most engines skip it.
+        for k in range(1, kmax + 1):
+            for combo in combinations(eligible, k):
+                fixed_outputs: List[Tuple[HexId, int, Resource]] = []
+                village_hexes: List[HexId] = []
+                village_caps: List[int] = []
+
+                # 1) Compute per-hex production amounts (including mill bonus if selected)
+                for hid, base_cnt, res, has_mill in combo:
+                    cnt = base_cnt + (1 if has_mill else 0)
+
+                    if res == Resource.WORKER:
+                        # This hex produces workers. We cannot finalize the count yet if we might exceed cap.
+                        village_hexes.append(hid)
+                        village_caps.append(cnt)
+                    else:
+                        fixed_outputs.append((hid, cnt, res))
+
+                # 2) Handle cases with no villages -> single deterministic choice
+                if not village_hexes:
+                    # Canonical ordering to avoid duplicates in params
+                    params = tuple(sorted(fixed_outputs, key=lambda x: (x[2], x[0])))
+                    result.append(TurnChoice(TopActionType.PRODUCE, params=params))
+                    continue
+
+                # 3) Villages exist. Determine how many workers we can actually add.
+                # Total workers requested by this selection:
+                requested_workers = sum(village_caps)
+
+                # If you want to enforce "must produce as many workers as possible", use:
+                # produced_total = min(requested_workers, remaining_slots)
+                # If you want to allow "produce fewer than possible" (usually not needed), you'd enumerate totals 0..produced_total.
+                produced_total = min(requested_workers, remaining_slots)
+
+                # 4) Generate allocations of produced_total across villages with per-hex caps
+                allocs = bounded_allocations(village_caps, produced_total)
+
+                # If produced_total is 0, bounded_allocations returns [ (0,0,...0) ] -> fine.
+                for alloc in allocs:
+                    outputs = fixed_outputs[:]
+                    for hid, w in zip(village_hexes, alloc):
+                        if w > 0:
+                            outputs.append((hid, w, Resource.WORKER))
+
+                    # Canonical ordering for params (helps pruning/caching)
+                    params = tuple(sorted(outputs, key=lambda x: (x[2], x[0])))
+                    result.append(TurnChoice(TopActionType.PRODUCE, params=params))
+
         return result
 
+    
     def _legal_trade_choices(self, s: GameState) -> List[TurnChoice]:
         # Skeleton: trade chooses 2 resources or 1 resource + popularity, etc depending on mat upgrades.
         # Start by choosing a single resource to gain (placeholder).
@@ -597,29 +679,51 @@ class Engine:
         return replace(s, units=new_units, last_top_action=TopActionType.MOVE)
 
     def _apply_produce(self, s: GameState, c: TurnChoice) -> GameState:
-        # c.params is going to be a Tuple of Dicts, with the key being the resource type, and the value being the number of items
-        new_econ = s.econ # get a clone of the current economy
+        # c.params: Tuple[Tuple[HexId, int, Resource], ...]
+        new_econ = s.econ
+        new_units = s.units
 
-        if s.units.worker_count() >= 4:
+        # Pay produce "costs" based on current worker count (per your model)
+        wc = new_units.worker_count()
+        if wc >= 4:
             new_econ = self._gain(new_econ, power=-1)
-        if s.units.worker_count() >= 6:
+        if wc >= 6:
             new_econ = self._gain(new_econ, popularity=-1)
-        if s.units.worker_count() >= 8:
+        if wc >= 8:
             new_econ = self._gain(new_econ, coins=-1)
-            
-        # REVISIT - villages and worker
-        
-        for product in c.params:
-            new_econ = self._gain(new_econ, gains=product)
-            
-        return replace(s, econ=new_econ, last_top_action=TopActionType.PRODUCE)
 
+        # Apply production outputs
+        for hid, count, res in c.params:
+            if count <= 0:
+                continue
+
+            if res == Resource.WORKER:
+                # Enforce cap defensively (choices should already respect it)
+                remaining = max(0, 8 - new_units.worker_count())
+                add = min(count, remaining)
+                if add <= 0:
+                    continue
+
+                # Add workers to that hex in units
+                updated_workers = add_to_tuple_map(new_units.workers, (hid, add))
+                new_units = replace(new_units, workers=updated_workers)
+
+                # Track worker gain in econ if you want (proxy)
+                new_econ = self._gain(new_econ, gains={Resource.WORKER: add})
+            else:
+                new_econ = self._gain(new_econ, gains={res: count})
+
+        return replace(s, units=new_units, econ=new_econ, last_top_action=TopActionType.PRODUCE)
+
+    
     def _apply_trade(self, s: GameState, c: TurnChoice) -> GameState:
-        # To Do list:
-        #   * If the Armory is acquired, gain a military
-        
         # Trading always costs 1 coin
         new_econ = self._gain(s.econ, coins=-1)
+
+        # If Armory is acquired, gain 1 power
+        if Structure.ARMORY in (struct for (struct, _) in s.units.structures):
+            new_econ = self._gain(s.econ, power=1)
+        
         r2 = None
         if len(c.params) == 2:
             (r,r2) = c.params
@@ -635,12 +739,14 @@ class Engine:
         return replace(s, econ=new_econ, last_top_action=TopActionType.TRADE)
 
     def _apply_bolster(self, s: GameState, c: TurnChoice) -> GameState:
-        # To Do List:
-        #   * If Monument is acquired, gain 1 popularity
-        
         # Bolster always costs 1 coin
         new_econ = self._gain(s.econ, coins=-1)
-        # Placeholder: +2 power REVSIIT
+
+        # If Monument is acquired, gain 1 popularity
+        if Structure.MONUMENT in (struct for (struct, _) in s.units.structures):
+            new_econ = self._gain(s.econ, popularity=1)
+        
+        # Placeholder: +2 power REVISIT
         if 'POWER' in c.params:
             new_econ = self._gain(new_econ, power=2 + s.prog.bolster_modifier)
         elif 'CARDS' in c.params:
@@ -668,7 +774,7 @@ class Engine:
         if bottom == BottomActionType.BUILD:
             return self._legal_build_choices(s_after_top)
         if bottom == BottomActionType.DEPLOY:
-            return [BottomChoice(bottom, params=("TODO: which mech",))]
+            return self._legal_deploy_choices(s_after_top)
         if bottom == BottomActionType.UPGRADE:
             return self._legal_upgrade_choices(s_after_top)
         if bottom == BottomActionType.ENLIST:
@@ -676,6 +782,16 @@ class Engine:
 
         return [BottomChoice(bottom, params=())]
 
+    def _legal_deploy_choices(self, s: GameState) -> List[BottomChoice]:
+        # To Do:
+        #   * which occupied territory does the mech go on
+        #   * mech ability
+        #   * mech abilities by faction
+        #   * mech abilities altering things like move by picking up workers
+        #   * mech ability River Walk
+        #   * mech bonus of Speed to all moves
+        return [BottomChoice(BottomActionType.DEPLOY, params=("MECH needs stuff"))]
+    
     def _legal_build_choices(self, s: GameState) -> List[BottomChoice]:
         # for any hex that has a worker on it we can put a structure on it.
         param_extension = list()
@@ -684,17 +800,20 @@ class Engine:
             # territories can only have one structure on them.
             if hid in (used_hid for (_, used_hid) in s.units.structures):
                 pass
+            # structures cannot be on home bases
+            if s.board.terrain(hid) == Terrain.HOME_BASE:
+                pass
             for struct in Structure:
                 if struct in (used_struct for (used_struct, _) in s.units.structures):
                     pass
-                param_extension.append([hid, struct])
+                param_extension.append([struct, hid])
         return [BottomChoice(BottomActionType.BUILD, params=tuple(x)) for x in param_extension]
     
     def _legal_upgrade_choices(self, s: GameState) -> List[BottomChoice]:
         param_extension = list()
-        # REVISIT - need to remove already-selected choices!
-        for tuc in TopUpgradeChoice:
-            for buc in BottomUpgradeChoice:
+        # REVISIT - need to remove already-selected choices! DONE?? Needs to be verified
+        for tuc in s.prog.top_upgrade_opportunities:
+            for buc in s.prog.bottom_upgrade_opportunities:
                 param_extension.append([tuc, buc])
         return [BottomChoice(BottomActionType.UPGRADE, params=tuple(x)) for x in param_extension]
     
@@ -703,15 +822,25 @@ class Engine:
         cost = s.bottom_action_cost(b.action)
         reward_coins = s.mat.bottom_coin_reward[b.action]
 
+        # pay the cost for this action
         s2 = replace(s, econ=self._pay(s.econ, cost))
+
+        # get the coin benefit
         s3 = replace(s2, econ=self._gain(s2.econ, coins=reward_coins))
 
+        # get the bonus benefit
+        #print(f"Looking for {b.action} in {s3.prog.bottom_bonuses}")
+        if b.action in s3.prog.bottom_bonuses:
+            bonus = s.mat.bottom_bonus[b.action]
+            #print(f"applying {bonus} bottom bonus for {b.action}")
+            # REVISIT - when we work on Enlist, we need to come back and add these bonuses!!!
+        
         # Update progress counters (placeholder).
         prog = s3.prog
         if b.action == BottomActionType.BUILD:
             return self._apply_build(s3, params=b.params)
         elif b.action == BottomActionType.DEPLOY:
-            prog = replace(prog, mechs_deployed=prog.mechs_deployed + 1)
+            return self._apply_deploy(s3, params=b.params)
         elif b.action == BottomActionType.UPGRADE:
             return self._apply_upgrade(s3, params=b.params)
         elif b.action == BottomActionType.ENLIST:
@@ -719,11 +848,27 @@ class Engine:
 
         return replace(s3, prog=prog)
 
-    def _apply_build(self, s: GameState, params: Tuple[Structure, HexId]) -> GameState:
-        # BOOKMARK!!!
+    def _apply_deploy(self, s: GameState, params) -> GameState:
         prog = s.prog
-        prog = replace(prog, structures_built=prog.structures_built + 1)
-        return replace(s, prog=prog)
+        prog = replace(prog, mechs_deployed=prog.mechs_deployed + 1)
+        hid: HexId = None
+        for (whid, wcount) in s.units.workers:
+            hid = whid
+            break
+        fff = replace(s.units, mechs=add_to_tuple_map(s.units.mechs, (hid, 1)))
+        return replace(s, prog=prog, units=fff)
+            
+    def _apply_build(self, s: GameState, params: Tuple[Structure, HexId]) -> GameState:
+        prog = s.prog
+        structs = list(s.units.structures)
+        #print("params is {}".format(params))
+        structs.append(params)
+           
+        prog = replace(prog, structures_built=len(structs))
+        #print("    structs as a list is {}".format(structs))
+        #print("    setting structures to be {}".format(tuple(structs)))
+        units = replace(s.units, structures=tuple(structs))
+        return replace(s, prog=prog, units=units)
 
     def _apply_upgrade(self, s: GameState, params: Tuple[TopUpgradeChoice, BottomUpgradeChoice]) -> GameState:
         prog = s.prog
@@ -791,9 +936,79 @@ def power_bell(power: int, n_mechs: int, sigma: float = 3.0) -> float:
     # Standard Gaussian centered at `ideal`, max = 1.0 at the peak
     return math.exp(-0.5 * ((power - ideal) / sigma) ** 2)
 
+def add_to_tuple_map(data: tuple[tuple[HexId, int], ...],
+                     addition: tuple[HexId, int],
+                     ) -> tuple[tuple[HexId, int], ...]:
+    if len(addition) == 0:
+        return data
+    k, delta = addition
+    d = dict(data)
+    d[k] = d.get(k, 0) + delta
+    return tuple(sorted(d.items()))
+
+def bounded_allocations(bounds: List[int], total: int) -> List[Tuple[int, ...]]:
+    """
+    Return all tuples a where:
+      - len(a) == len(bounds)
+      - 0 <= a[i] <= bounds[i]
+      - sum(a) == total
+
+    Example:
+      bounds=[3,2], total=2 -> [(0,2),(1,1),(2,0)]
+    """
+    result: List[Tuple[int, ...]] = []
+
+    def rec(i: int, remaining: int, acc: List[int]) -> None:
+        if i == len(bounds):
+            if remaining == 0:
+                result.append(tuple(acc))
+            return
+
+        max_take = min(bounds[i], remaining)
+        for take in range(0, max_take + 1):
+            acc.append(take)
+            rec(i + 1, remaining - take, acc)
+            acc.pop()
+
+    rec(0, total, [])
+    return result
+
 # -----------------------------
 # Scoring (tune as you like)
 # -----------------------------
+
+def line_scoring(s: GameState) -> float:
+    opening_weight = max(0.1, (10.0 - s.turn)/9.0)
+    sigma = 4.0
+    midgame_weight = math.exp(-0.5 * ((s.turn - 14) / sigma) ** 2)
+    endgame_weight = max(0.1, (s.turn - 12)/10)
+
+    score = opening_weight * opening_score(s)
+    score += midgame_weight * midgame_score(s)
+    score += endgame_weight * endgame_score(s)
+    return score
+
+def midgame_score(s: GameState) -> float:
+    workers = sum(value for _, value in s.units.workers)
+    mechs = sum(value for _, value in s.units.mechs)
+    territory_count = len(s.units.territories_controlled())
+    score = 0.0
+    score += 6.0 * mechs
+    score += 2.5 * territory_count
+    score += 1.1 * s.econ.coins
+    score += 1.9 * s.econ.popularity
+    score += 1.75 * power_bell(s.econ.power, mechs)
+    return score
+
+def endgame_score(s: GameState) -> float:
+    territory_count = len(s.units.territories_controlled())
+    workers = sum(value for _, value in s.units.workers)
+    mechs = sum(value for _, value in s.units.mechs)
+    score = 0.0
+    score += 1.0
+    score += 3.0 * s.econ.popularity
+    score += 3.5 * territory_count
+    return score
 
 def opening_score(s: GameState) -> float:
     """
@@ -801,24 +1016,22 @@ def opening_score(s: GameState) -> float:
     Adjust weights as you learn what “good” looks like for Nordic + Industrial.
     """
     workers = sum(value for _, value in s.units.workers)
-    mechs = len(s.units.mechs)
-    territory_count = len(s.units.territories_controlled()) #set(key for key, _ in s.units.workers) | set(s.units.character) | set(s.units.mechs))
+    mechs = sum(value for _, value in s.units.mechs)
 
     # Weighted progress
     score = 0.0
-    score += 6.0 * workers
-    score += 6.0 * mechs
-    score += 5.0 * s.prog.upgrades_done
-    score += 4.0 * s.prog.enlists
-    score += 3.0 * s.prog.structures_built
-    score += 0.76 * COMBAT_CARDS_AVG * s.econ.combat_cards
+    score += 3.0 * workers
+    score += 5.0 * mechs
+    score += 4.0 * s.prog.upgrades_done * ((25.0 - min(24, s.turn)) / 25.0)
+    score += 4.1 * s.prog.enlists * ((25.0 - min(24, s.turn)) / 25.0)
+    score += 4.0 * s.prog.structures_built * ((25.0 - min(24, s.turn)) / 25.0)
+    score += 0.76 * COMBAT_CARDS_AVG * max(1, (6 - s.econ.combat_cards))
     score += 1.1 * s.econ.coins
-    score += 0.5 * s.econ.popularity
+    score += 1.1 * s.econ.popularity
     score += 0.75 * power_bell(s.econ.power, mechs)
-    score += 2.5 * territory_count
     # Small bonus for having some resources banked
     score += 0.2 * sum(dict(s.econ.resources).values())
-    
+
     # REVISIT - also, score needs to be resource weighted... the resources that fund low-cost advancements should have a lower weight than those that fund high-cost advancements.
 
     # REVISIT - lastly, use some scoring that reflects the actual scoreboard of the game.
@@ -852,7 +1065,7 @@ def beam_search_openings(
     start: GameState,
     turns: int = 5,
     beam_width: int = 200,
-    scorer: Callable[[GameState], float] = opening_score,
+    scorer: Callable[[GameState], float] = line_scoring,
 ) -> List[Line]:
     """
     Expand turn by turn. Keep best K lines each turn.
@@ -943,6 +1156,44 @@ def make_start_state_nordic_industrial() -> GameState:
         last_top_action=None,
     )
 
+def make_start_state_crimea_industrial() -> GameState:
+    board = make_minimal_opening_board()
+    faction = crimea_config()
+    #mat = industrial_mat_config()
+    mat = IndustrialMat()
+
+    # Placeholder start:
+    # - Character starts at home
+    # - 2 workers on home (tuple of locations)
+    # - 0 mechs
+    # - starting resources/coins/power/popularity: fill in true values later
+    units = Units(
+        character="C_HOME",
+        mechs=(),
+        workers=(("C_VILLAGE", 1), ("C_FARM", 1)),
+        structures=()
+    )
+    econ = Economy(
+        coins=4,
+        power=5,
+        popularity=2,
+        resources=tuple(sorted({Resource.FOOD: 0, Resource.WOOD: 0, Resource.METAL: 0, Resource.OIL: 0, Resource.WORKER: 0}.items(),
+                              key=lambda x: x[0].value)),
+        combat_cards=0,
+    )
+    prog = mat.init_progress()
+
+    return GameState(
+        faction=faction,
+        mat=mat,
+        board=board,
+        units=units,
+        econ=econ,
+        prog=prog,
+        turn=0,
+        last_top_action=None,
+    )
+
 
 # -----------------------------
 # Demo runner
@@ -956,22 +1207,25 @@ def summarize_state(s: GameState) -> str:
         f"Res(F/W/M/O)=({res.get(Resource.FOOD,0)}/{res.get(Resource.WOOD,0)}/"
         f"{res.get(Resource.METAL,0)}/{res.get(Resource.OIL,0)})  "
         f"Territories={territories}  "
-        f"Workers={len(s.units.workers)}  Mechs={len(s.units.mechs)}  "
+        f"Workers={sum(x for _, x in s.units.workers)}  Mechs={sum(x for _, x in s.units.mechs)}  "
         f"Upg={s.prog.upgrades_done}  Dep={s.prog.mechs_deployed}  "
         f"Build={s.prog.structures_built}  Enlist={s.prog.enlists}  "
         f"Combat Cards={s.econ.combat_cards}  "
         f"Char@{s.units.character}"
-        f"  prog={s.prog}"
+        f"\n    prog={s.prog}"
+        f"\n    units={s.units}"
+        f"\n    econ={s.econ}"
     )
 
 
 if __name__ == "__main__":
     engine = Engine()
     start = make_start_state_nordic_industrial()
+    #start = make_start_state_crimea_industrial()
 
-    lines = beam_search_openings(engine, start, turns=6, beam_width=500)
+    lines = beam_search_openings(engine, start, turns=8, beam_width=1000)
 
-    print("Top 10 opening lines (placeholder rules):")
+    print("Top 10 opening lines:")
     for i, ln in enumerate(lines[:10], start=1):
         print(f"\n#{i}  Score={opening_score(ln.state):.2f}")
         for step in ln.turn_actions:
