@@ -322,7 +322,7 @@ def togawa_config() -> Faction:
 
 
 @dataclass(frozen=True)
-class IndustrialMat(PlayerMat): #Industrial is Mat 1
+class IndustrialMat(PlayerMat): # Mat 1
     name = "Industrial"
     start_coins = 4
     start_pop = 2
@@ -371,9 +371,158 @@ class IndustrialMat(PlayerMat): #Industrial is Mat 1
                                                       ),)
         return prog
 
+@dataclass(frozen=True)
+class EngineeringMat(PlayerMat): # Mat 2
+    name = "Engineering"
+    start_coins = 5
+    start_pop = 2
+    pairings = {
+        TopActionType.PRODUCE: BottomActionType.UPGRADE,
+        TopActionType.TRADE: BottomActionType.DEPLOY,
+        TopActionType.BOLSTER: BottomActionType.BUILD,
+        TopActionType.MOVE: BottomActionType.ENLIST,
+    }
+    bottom_cost = {
+        BottomActionType.UPGRADE: {Resource.OIL: 3},
+        BottomActionType.DEPLOY: {Resource.METAL: 3},
+        BottomActionType.BUILD: {Resource.WOOD: 4},
+        BottomActionType.ENLIST: {Resource.FOOD: 3},
+    }
+    
+    bottom_coin_reward = {
+        BottomActionType.UPGRADE: 2,
+        BottomActionType.DEPLOY: 0,
+        BottomActionType.BUILD: 3,
+        BottomActionType.ENLIST: 1,
+    }
+    bottom_bonus = {
+        BottomActionType.UPGRADE: BottomActionBonus.POWER,
+        BottomActionType.DEPLOY: BottomActionBonus.COIN,
+        BottomActionType.BUILD: BottomActionBonus.POPULARITY,
+        BottomActionType.ENLIST: BottomActionBonus.CARD,
+    }
+
+    def __init__(self):
+        pass
+
+    def init_progress(self):
+        prog = Progress(top_upgrade_opportunities=(TopUpgradeChoice.BOLSTER_MILITARY,
+                                                   TopUpgradeChoice.BOLSTER_CARD,
+                                                   TopUpgradeChoice.PRODUCE_RESOURCE,
+                                                   TopUpgradeChoice.MOVE_UNIT,
+                                                   TopUpgradeChoice.MOVE_COIN,
+                                                   TopUpgradeChoice.TRADE_POPULARITY),
+                        bottom_upgrade_opportunities=(BottomUpgradeChoice.UPGRADE_COST,
+                                                      BottomUpgradeChoice.DEPLOY_COST,
+                                                      BottomUpgradeChoice.DEPLOY_COST,
+                                                      BottomUpgradeChoice.BUILD_COST,
+                                                      BottomUpgradeChoice.BLIUD_COST,
+                                                      BottomUpgradeChoice.ENLIST_COST,
+                                                      ),)
+        return prog
 
 @dataclass(frozen=True)
-class InnovativeMat(PlayerMat): #Innovative is Mat 3A
+class MilitantMat(PlayerMat): # Mat 2A
+    name = "Militant"
+    start_coins = 4
+    start_pop = 3
+    pairings = {
+        TopActionType.BOLSTER: BottomActionType.UPGRADE,
+        TopActionType.MOVE: BottomActionType.DEPLOY,
+        TopActionType.PRODUCE: BottomActionType.BUILD,
+        TopActionType.TRADE: BottomActionType.ENLIST,
+    }
+    bottom_cost = {
+        BottomActionType.UPGRADE: {Resource.OIL: 3},
+        BottomActionType.DEPLOY: {Resource.METAL: 3},
+        BottomActionType.BUILD: {Resource.WOOD: 4},
+        BottomActionType.ENLIST: {Resource.FOOD: 3},
+    }
+    
+    bottom_coin_reward = {
+        BottomActionType.UPGRADE: 0,
+        BottomActionType.DEPLOY: 3,
+        BottomActionType.BUILD: 1,
+        BottomActionType.ENLIST: 2,
+    }
+    bottom_bonus = {
+        BottomActionType.UPGRADE: BottomActionBonus.POWER,
+        BottomActionType.DEPLOY: BottomActionBonus.COIN,
+        BottomActionType.BUILD: BottomActionBonus.POPULARITY,
+        BottomActionType.ENLIST: BottomActionBonus.CARD,
+    }
+
+    def __init__(self):
+        pass
+
+    def init_progress(self):
+        prog = Progress(top_upgrade_opportunities=(TopUpgradeChoice.BOLSTER_MILITARY,
+                                                   TopUpgradeChoice.BOLSTER_CARD,
+                                                   TopUpgradeChoice.PRODUCE_RESOURCE,
+                                                   TopUpgradeChoice.MOVE_UNIT,
+                                                   TopUpgradeChoice.MOVE_COIN,
+                                                   TopUpgradeChoice.TRADE_POPULARITY),
+                        bottom_upgrade_opportunities=(BottomUpgradeChoice.UPGRADE_COST,
+                                                      BottomUpgradeChoice.UPGRADE_COST,
+                                                      BottomUpgradeChoice.DEPLOY_COST,
+                                                      BottomUpgradeChoice.BUILD_COST,
+                                                      BottomUpgradeChoice.ENLIST_COST,
+                                                      BottomUpgradeChoice.ENLIST_COST,
+                                                      ),)
+        return prog
+
+@dataclass(frozen=True)
+class PatrioticMat(PlayerMat): # Mat 3
+    name = "Patriotic"
+    start_coins = 6
+    start_pop = 2
+    pairings = {
+        TopActionType.MOVE: BottomActionType.UPGRADE,
+        TopActionType.BOLSTER: BottomActionType.DEPLOY,
+        TopActionType.TRADE: BottomActionType.BUILD,
+        TopActionType.PRODUCE: BottomActionType.ENLIST,
+    }
+    bottom_cost = {
+        BottomActionType.UPGRADE: {Resource.OIL: 2},
+        BottomActionType.DEPLOY: {Resource.METAL: 4},
+        BottomActionType.BUILD: {Resource.WOOD: 4},
+        BottomActionType.ENLIST: {Resource.FOOD: 3},
+    }
+    
+    bottom_coin_reward = {
+        BottomActionType.UPGRADE: 1,
+        BottomActionType.DEPLOY: 3,
+        BottomActionType.BUILD: 0,
+        BottomActionType.ENLIST: 2,
+    }
+    bottom_bonus = {
+        BottomActionType.UPGRADE: BottomActionBonus.POWER,
+        BottomActionType.DEPLOY: BottomActionBonus.COIN,
+        BottomActionType.BUILD: BottomActionBonus.POPULARITY,
+        BottomActionType.ENLIST: BottomActionBonus.CARD,
+    }
+
+    def __init__(self):
+        pass
+
+    def init_progress(self):
+        prog = Progress(top_upgrade_opportunities=(TopUpgradeChoice.BOLSTER_MILITARY,
+                                                   TopUpgradeChoice.BOLSTER_CARD,
+                                                   TopUpgradeChoice.PRODUCE_RESOURCE,
+                                                   TopUpgradeChoice.MOVE_UNIT,
+                                                   TopUpgradeChoice.MOVE_COIN,
+                                                   TopUpgradeChoice.TRADE_POPULARITY),
+                        bottom_upgrade_opportunities=(BottomUpgradeChoice.DEPLOY_COST,
+                                                      BottomUpgradeChoice.DEPLOY_COST,
+                                                      BottomUpgradeChoice.DEPLOY_COST,
+                                                      BottomUpgradeChoice.BUILD_COST,
+                                                      BottomUpgradeChoice.BUILD_COST,
+                                                      BottomUpgradeChoice.ENLIST_COST,
+                                                      ),)
+        return prog
+
+@dataclass(frozen=True)
+class InnovativeMat(PlayerMat): # Mat 3A
     name = "Innovative"
     start_coins = 5
     start_pop = 3
@@ -1145,7 +1294,7 @@ def opening_score(s: GameState) -> float:
 
     # Weighted progress
     score = 0.0
-    score += 3.0 * workers
+    score += 2.0 * workers
     score += 5.0 * mechs
     score += 4.0 * s.prog.upgrades_done * ((25.0 - min(24, s.turn)) / 25.0)
     score += 4.1 * s.prog.enlists * ((25.0 - min(24, s.turn)) / 25.0)
@@ -1464,11 +1613,7 @@ def summarize_state(s: GameState) -> str:
 
 if __name__ == "__main__":
     engine = Engine()
-    # start = make_start_state_nordic_industrial()
-    # start = make_start_state_crimea_industrial()
-    # start = make_start_state_togawa_industrial()
-    # start = make_start_state_togawa_innovative()
-    start = make_start_state_general(nordic_config,IndustrialMat)
+    start = make_start_state_general(togawa_config,MilitantMat)
 
     lines = beam_search_openings(engine, start, turns=8, beam_width=1000)
 
