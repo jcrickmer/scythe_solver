@@ -25,7 +25,7 @@ from board import HexId, Hex, Board, Terrain
 from units import Resource
 import scorer
 from gamestate import GameState, Units, Progress, Economy
-from factions import Faction, togawa_config, nordic_config, crimea_config
+from factions import Faction, albion_config, togawa_config, nordic_config, crimea_config, polania_config, rusviet_config, saxony_config
 from units import TopActionType, BottomActionType, BottomActionBonus, TopUpgradeChoice, BottomUpgradeChoice, Popularity, Structure
 
 process = psutil.Process()
@@ -1200,10 +1200,14 @@ def summarize_state(s: GameState) -> str:
 
 # --- Registries ---
 FACTIONS = {
-    "nordic": nordic_config,
-    "togawa": togawa_config,
+    "albion": albion_config,
     "crimea": crimea_config,
-    # add more as needed
+    "nordic": nordic_config,
+    "polania": polania_config,
+    "togawa": togawa_config,
+    "saxony": saxony_config,
+    "polania": polania_config,
+    "rusviet": rusviet_config
 }
 
 MATS = {
@@ -1214,7 +1218,6 @@ MATS = {
     "patriotic": PatrioticMat,
     "innovative": InnovativeMat,
     "mechanical": MechanicalMat,
-    # add more as needed
 }
 
 
