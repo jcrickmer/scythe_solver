@@ -255,16 +255,23 @@ def load_board_from_yaml(path: str | Path) -> Board:
 @dataclass(frozen=True)
 class Faction:
     name: str
+    start_power: int
+    start_cards: int
     # Nordic specifics you might later encode:
     # - riverwalk rules
     # - "Swim" (workers may move into/through lakes?) etc.
     # Keep placeholders so the engine can reference them.
     special_rules: Tuple[str, ...] = ()
+    unit_start: Tuple[str, ...] = ()
+    
 
 
 @dataclass(frozen=True)
 class PlayerMat:
     name: str
+
+    start_coins: int
+    start_pop: int
 
     # How the 4 top actions pair with bottom actions on this mat
     # Example structure: {TopActionType.MOVE: BottomActionType.UPGRADE, ...}
@@ -288,26 +295,37 @@ class PlayerMat:
 def nordic_config() -> Faction:
     return Faction(
         name="Nordic",
+        start_power=4,
+        start_cards=1,
         special_rules=("TODO: Nordic riverwalk / swim rules",),
+        unit_start=Units(character="N_HOME",mechs=(),workers=(("N_FOREST", 1), ("N_TUNDRA", 1)),structures=()),
     )
 
 
 def crimea_config() -> Faction:
     return Faction(
         name="Crimea",
+        start_power=5,
+        start_cards=0,
         special_rules=("TODO: ",),
+        unit_start=Units(character="C_HOME",mechs=(),workers=(("C_FARM", 1), ("C_VILLAGE", 1)),structures=()),
     )
 
 def togawa_config() -> Faction:
     return Faction(
         name="Togawa",
+        start_power=0,
+        start_cards=2,
         special_rules=("TODO: ",),
+        unit_start=Units(character="T_HOME",mechs=(),workers=(("T_FARM", 1), ("T_TUNDRA", 1)),structures=()),
     )
 
 
 @dataclass(frozen=True)
 class IndustrialMat(PlayerMat): #Industrial is Mat 1
     name = "Industrial"
+    start_coins = 4
+    start_pop = 2
     pairings = {
         TopActionType.BOLSTER: BottomActionType.UPGRADE,
         TopActionType.PRODUCE: BottomActionType.DEPLOY,
@@ -357,6 +375,8 @@ class IndustrialMat(PlayerMat): #Industrial is Mat 1
 @dataclass(frozen=True)
 class InnovativeMat(PlayerMat): #Innovative is Mat 3A
     name = "Innovative"
+    start_coins = 5
+    start_pop = 3
     pairings = {
         TopActionType.TRADE: BottomActionType.UPGRADE,
         TopActionType.PRODUCE: BottomActionType.DEPLOY,
@@ -369,7 +389,7 @@ class InnovativeMat(PlayerMat): #Innovative is Mat 3A
         BottomActionType.BUILD: {Resource.WOOD: 4},
         BottomActionType.ENLIST: {Resource.FOOD: 3},
     }
-    # REVISIT - need to add how upgrades impact costs. Maybe just set a "minimum" cost that represents the floor upgrades can move toward.
+    
     bottom_coin_reward = {
         BottomActionType.UPGRADE: 3,
         BottomActionType.DEPLOY: 1,
@@ -1232,6 +1252,41 @@ def beam_search_openings(
 # Starting state (Nordic + Industrial)
 # -----------------------------
 
+def make_start_state_general(faction_, mat_) -> GameState:
+    board = load_board_from_yaml("board.yaml")
+
+    faction = faction_()
+    # mat = industrial_mat_config()
+    mat = mat_()
+
+    # Placeholder start:
+    # - Character starts at home
+    # - 2 workers on home (tuple of locations)
+    # - 0 mechs
+    # - starting resources/coins/power/popularity: fill in true values later
+    units = faction.unit_start
+    econ = Economy(
+        coins=mat.start_coins,
+        power=faction.start_power,
+        popularity=mat.start_pop,
+        resources=tuple(sorted({Resource.FOOD: 0, Resource.WOOD: 0, Resource.METAL: 0, Resource.OIL: 0, Resource.WORKER: 0}.items(),
+                               key=lambda x: x[0].value)),
+        combat_cards=faction.start_cards,
+    )
+    prog = mat.init_progress()
+
+    return GameState(
+        faction=faction,
+        mat=mat,
+        board=board,
+        units=units,
+        econ=econ,
+        prog=prog,
+        turn=0,
+        last_top_action=None,
+    )
+
+"""
 def make_start_state_nordic_industrial() -> GameState:
     # board = make_minimal_opening_board()
     board = load_board_from_yaml("board.yaml")
@@ -1245,12 +1300,7 @@ def make_start_state_nordic_industrial() -> GameState:
     # - 2 workers on home (tuple of locations)
     # - 0 mechs
     # - starting resources/coins/power/popularity: fill in true values later
-    units = Units(
-        character="N_HOME",
-        mechs=(),
-        workers=(("N_FOREST", 1), ("N_TUNDRA", 1)),
-        structures=()
-    )
+    units = faction.unit_start
     econ = Economy(
         coins=4,
         power=4,
@@ -1385,7 +1435,7 @@ def make_start_state_togawa_innovative() -> GameState:
         prog=prog,
         turn=0,
         last_top_action=None,
-    )
+    )"""
 
 
 
@@ -1417,7 +1467,8 @@ if __name__ == "__main__":
     # start = make_start_state_nordic_industrial()
     # start = make_start_state_crimea_industrial()
     # start = make_start_state_togawa_industrial()
-    start = make_start_state_togawa_innovative()
+    # start = make_start_state_togawa_innovative()
+    start = make_start_state_general(nordic_config,IndustrialMat)
 
     lines = beam_search_openings(engine, start, turns=8, beam_width=1000)
 
