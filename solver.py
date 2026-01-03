@@ -21,6 +21,9 @@ from pathlib import Path
 import psutil
 from board import HexId, Hex, Board, Terrain
 from units import Resource
+import scorer
+from gamestate import GameState
+
 process = psutil.Process()
 # print(process.memory_info().rss)
 
@@ -125,9 +128,6 @@ class Structure(IntEnum):
 
 class Popularity(Enum):
     POPULARITY = auto()
-
-
-COMBAT_CARDS_AVG = (16 * 2 + 12 * 3 + 8 * 4 + 6 * 5) / 42
 
 
 def make_minimal_opening_board() -> Board:
@@ -591,35 +591,6 @@ class Progress:
 
         return stars
 
-
-@dataclass(frozen=True)
-class GameState:
-    faction: Faction
-    mat: PlayerMat
-    board: Board
-
-    units: Units
-    econ: Economy
-    prog: Progress
-
-    # Turn bookkeeping
-    turn: int = 0
-    last_top_action: Optional[TopActionType] = None  # Scythe bans repeating same top action back-to-back
-
-    # Cache-friendly signature pieces (optional): you can compute on demand.
-    # But keeping state fully immutable + hashable is already great.
-
-    def bottom_action_cost(self, bottom_action: BottomActionType) -> Dict[BottomActionType: int]:
-        ''' For each resource cost in the bottom action coss from the mat, modify it by the current bottom modifiers in Progress. '''
-        cost = self.mat.bottom_cost[bottom_action].copy()
-
-        cost_modifier = 0
-        for (ba, mod) in self.prog.bottom_modifiers:
-            if ba == bottom_action:
-                cost_modifier = mod
-        result = {k: v + cost_modifier for k, v in cost.items()}
-        # print("bottom_action_cost: {}".format(result))
-        return result
 
 # -----------------------------
 # Action abstraction
@@ -1140,18 +1111,6 @@ class Engine:
         return replace(s, turn=s.turn + 1)
 
 
-def power_bell(power: int, n_mechs: int, sigma: float = 3.0) -> float:
-    """
-    Returns a value in (0, 1] that peaks when power ~= (n_mechs + 1) * 7,
-    capped at 18 (Scythe’s max power).
-    """
-    n_units = n_mechs + 1  # character + mechs
-    ideal = min(18, 7 * n_units)
-
-    # Standard Gaussian centered at `ideal`, max = 1.0 at the peak
-    return math.exp(-0.5 * ((power - ideal) / sigma) ** 2)
-
-
 def add_to_tuple_map(data: tuple[tuple[HexId, int], ...],
                      addition: tuple[HexId, int],
                      ) -> tuple[tuple[HexId, int], ...]:
@@ -1190,89 +1149,6 @@ def bounded_allocations(bounds: List[int], total: int) -> List[Tuple[int, ...]]:
     rec(0, total, [])
     return result
 
-# -----------------------------
-# Scoring (tune as you like)
-# -----------------------------
-
-
-def line_scoring(s: GameState) -> float:
-    opening_weight = max(0.1, (10.0 - s.turn) / 9.0)
-    sigma = 4.0
-    midgame_weight = math.exp(-0.5 * ((s.turn - 14) / sigma) ** 2)
-    endgame_weight = max(0.1, (s.turn - 12) / 10)
-
-    score = opening_weight * opening_score(s)
-    score += midgame_weight * midgame_score(s)
-    score += endgame_weight * endgame_score(s)
-    return score
-
-
-def midgame_score(s: GameState) -> float:
-    workers = sum(value for _, value in s.units.workers)
-    mechs = sum(value for _, value in s.units.mechs)
-    territory_count = len(s.units.territories_controlled())
-    score = 0.0
-    score += 6.0 * mechs
-    score += 3.3 * len(s.prog.encounters)
-    score += 2.5 * territory_count
-    score += 1.1 * s.econ.coins
-    score += 1.9 * s.econ.popularity
-    score += 1.75 * power_bell(s.econ.power, mechs)
-    return score
-
-
-def endgame_score(s: GameState) -> float:
-    territory_count = len(s.units.territories_controlled())
-    workers = sum(value for _, value in s.units.workers)
-    mechs = sum(value for _, value in s.units.mechs)
-    score = 0.0
-    score += 1.0
-    score += 3.0 * s.econ.popularity
-    score += 3.5 * territory_count
-    score += 0.5 * len(s.prog.encounters)
-    return score
-
-
-def opening_score(s: GameState) -> float:
-    """
-    Heuristic score for openings.
-    Adjust weights as you learn what “good” looks like for Nordic + Industrial.
-    """
-    workers = sum(value for _, value in s.units.workers)
-    mechs = sum(value for _, value in s.units.mechs)
-
-    # Weighted progress
-    score = 0.0
-    score += 2.0 * workers
-    score += 5.0 * mechs
-    score += 3.3 * len(s.prog.encounters)
-    score += 4.0 * s.prog.upgrades_done * ((25.0 - min(24, s.turn)) / 25.0)
-    score += 4.1 * s.prog.enlists * ((25.0 - min(24, s.turn)) / 25.0)
-    score += 4.0 * s.prog.structures_built * ((25.0 - min(24, s.turn)) / 25.0)
-    score += 0.76 * COMBAT_CARDS_AVG * max(1, (6 - s.econ.combat_cards))
-    score += 1.1 * s.econ.coins
-    score += 1.1 * s.econ.popularity
-    score += 0.75 * power_bell(s.econ.power, mechs)
-    # Small bonus for having some resources banked
-    score += 0.2 * sum(dict(s.econ.resources).values())
-
-    # REVISIT - also, score needs to be resource weighted... the resources
-    # that fund low-cost advancements should have a lower weight than those
-    # that fund high-cost advancements.
-
-    # REVISIT - lastly, use some scoring that reflects the actual scoreboard of the game.
-
-    # REVISIT - think about how goals change over time.
-    #   Opening game = resources and production possiblity
-    #   Mid game = tempo, board control, power potential
-    #   End game = focus on Scythe scoring system
-    #
-    # Maybe as the game progresses, the weight of each of these scoring
-    # systems shifts. Turns 1-6 are opening, 7-18 or mid game, 19+ is end
-    # game.
-
-    return score
-
 
 # -----------------------------
 # Search (beam search)
@@ -1293,7 +1169,7 @@ def beam_search_openings(
     start: GameState,
     turns: int = 5,
     beam_width: int = 200,
-    scorer: Callable[[GameState], float] = line_scoring,
+    line_scorer: Callable[[GameState], float] = scorer.line_score,
 ) -> List[Line]:
     """
     Expand turn by turn. Keep best K lines each turn.
@@ -1319,13 +1195,13 @@ def beam_search_openings(
                         s_next = engine.end_turn(s_bot)
                         desc = f"T{s.turn + 1}: {top.action.name} {top.params} + {b.action.name} {b.params}"
                         new_line = line.with_step(desc, s_next)
-                        candidates.append((scorer(s_next), uid, new_line))
+                        candidates.append((line_scorer(s_next), uid, new_line))
                         uid += 1
                 else:
                     s_next = engine.end_turn(s_top)
                     desc = f"T{s.turn + 1}: {top.action.name} {top.params} + (no bottom)"
                     new_line = line.with_step(desc, s_next)
-                    candidates.append((scorer(s_next), uid, new_line))
+                    candidates.append((line_scorer(s_next), uid, new_line))
                     uid += 1
 
         # keep best beam_width
@@ -1344,7 +1220,7 @@ def beam_search_openings(
         print("      max={}, min={}, mean={}, median={}".format(max(scrs), min(scrs), statistics.mean(scrs), statistics.median(scrs)))
 
     # return best lines overall
-    return sorted(frontier, key=lambda ln: scorer(ln.state), reverse=True)
+    return sorted(frontier, key=lambda ln: line_scorer(ln.state), reverse=True)
 
 
 # -----------------------------
@@ -1569,7 +1445,7 @@ if __name__ == "__main__":
 
     print("Top 10 opening lines:")
     for i, ln in enumerate(lines[:10], start=1):
-        print(f"\n#{i}  Score={opening_score(ln.state):.2f}")
+        print(f"\n#{i}  Score={scorer.line_score(ln.state):.2f}")
         for step in ln.turn_actions:
             print(" ", step)
         print(" ", summarize_state(ln.state))
