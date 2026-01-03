@@ -2,42 +2,47 @@ hexes:
   A_HOME:
     terrain: HOME_BASE
     neighbors: [A_MOUNTAIN, A_FARM]
-    board_position: [0, 2]
+    board_position: [0, 1]
+
+  N_HOME:
+    terrain: HOME_BASE
+    neighbors: [N_FOREST, N_TUNDRA]
+    board_position: [0, 4]
+
+#[1,0] does not exist
 
   A_MOUNTAIN:
     terrain: MOUNTAIN
-    neighbors: [A_FARM]
+    neighbors: [A_HOME, A_FARM, A_TUNDRA]
     river_neighbors: []
+    lake_neighbors: [LAKE_0]
     board_position: [1, 1]
 
   A_FARM:
     terrain: FARM
-    neighbors: [A_FARM]
-    river_neighbors: [A_MOUNTAIN, A_VILLAGE]
+    neighbors: [A_HOME, A_MOUNTAIN, A_VILLAGE, A_TUNDRA]
+    river_neighbors: []
+    lake_neighbors: [LAKE_1]
     board_position: [1, 2]
 
   A_VILLAGE:
     terrain: VILLAGE
     neighbors: [A_FARM]
-    river_neighbors: [TUNDRA_2_3, N_FOREST]
+    river_neighbors: [N_FOREST, TNL_TUNDRA_0]
+    lake_neighbors: [LAKE_1]
     has_encounter: true
     board_position: [1, 3]
 
-  N_HOME:
-    terrain: HOME_BASE
-    neighbors: [N_FOREST, N_TUNDRA]
-    board_position: [0, 5]
-
   N_FOREST:
     terrain: FOREST
-    neighbors: [N_TUNDRA, N_MOUNTAIN]
-    river_neighbors: [A_VILLAGE, TUNDRA_2_3]
+    neighbors: [N_HOME, N_TUNDRA, N_MOUNTAIN]
+    river_neighbors: [A_VILLAGE, TNL_TUNDRA_0]
     board_position: [1, 4]
 
   N_TUNDRA:
     terrain: TUNDRA
-    neighbors: [N_FOREST, N_MOUNTAIN]
-    river_neighbors: [N_FARM, N_VILLAGE]
+    neighbors: [N_HOME, N_FOREST, N_MOUNTAIN]
+    river_neighbors: [N_VILLAGE, N_FARM]
     board_position: [1, 5]
 
   N_VILLAGE:
@@ -46,92 +51,193 @@ hexes:
     river_neighbors: [N_TUNDRA]
     board_position: [1, 6]
 
-  TUNDRA_2_3:
+  LAKE_0:
+    terrain: LAKE
+    neighbors: [A_MOUNTAIN, A_TUNDRA, P_HOME, P_FOREST]
+    board_position: [2,0]
+
+  A_TUNDRA:
     terrain: TUNDRA
-    neighbors: []
+    neighbors: [A_MOUNTAIN, A_FARM, TNL_MOUNTAIN]
+    river_neighbors: [P_FOREST]
+    lake_neighbors: [LAKE_0, LAKE_1]
+    has_encounter: true
+    board_position: [2, 1]
+
+  LAKE_1:
+    terrain: LAKE
+    neighbors: [A_FARM, A_VILLAGE, A_TUNDRA, TNL_TUNDRA_0, TNL_MOUNTAIN, FACT_FOREST]
+    board_position: [2,2]
+
+  TNL_TUNDRA_0:
+    terrain: TUNDRA
+    neighbors: [FACT_FOREST]
     river_neighbors: [A_VILLAGE, N_FOREST, N_MOUNTAIN]
+    lake_neighbors: [LAKE_1, LAKE_2]
     is_tunnel: true
     board_position: [2, 3]
 
   N_MOUNTAIN:
     terrain: MOUNTAIN
     neighbors: [N_FOREST, N_TUNDRA]
-    river_neighbors: [TUNDRA_2_3, N_FARM]
+    river_neighbors: [TNL_TUNDRA_0, N_FARM, TNL_FOREST]
+    lake_neighbors: [LAKE_2]
     has_encounter: true
     board_position: [2, 4]
 
   N_FARM:
     terrain: FARM
-    neighbors: [N_VILLAGE, R_FARM]
-    river_neighbors: [N_TUNDRA, N_MOUNTAIN]
+    neighbors: [N_VILLAGE, R_FARM, TNL_FOREST]
+    river_neighbors: [N_TUNDRA, N_MOUNTAIN, R_VILLAGE]
     board_position: [2, 5]
 
   R_FARM:
     terrain: FARM
     neighbors: [N_VILLAGE, N_FARM]
-    river_neighbors: []
+    river_neighbors: [R_VILLAGE]
     has_encounter: true
     board_position: [2, 6]
 
-  C_HOME:
+  P_HOME:
     terrain: HOME_BASE
-    neighbors: [C_FARM, C_VILLAGE]
-    board_position: [8, 2]
+    neighbors: [P_FOREST, P_FARM]
+    river_neighbors: []
+    lake_neighbors: [LAKE 0]
+    board_position: [3, 0]
+  
+  P_FOREST:
+    terrain: FOREST
+    neighbors: [P_HOME, P_FARM, P_VILLAGE]
+    river_neighbors: [A_TUNDRA, TNL_MOUNTAIN]
+    lake_neighbors: [LAKE_0]
+    board_position: [3, 1]
 
-  C_FARM:
-    terrain: FARM
-    neighbors: [C_VILLAGE, C_MOUNTAIN]
-    river_neighbors: [C_TUNDRA]
-    board_position: [7, 3]
-
-  C_VILLAGE:
-    terrain: VILLAGE
-    neighbors: [C_HOME, C_FARM, C_MOUNTAIN]
-    board_position: [8, 3]
-
-  C_MOUNTAIN:
+  TNL_MOUNTAIN:
     terrain: MOUNTAIN
-    neighbors: [C_FARM, C_VILLAGE]
-    river_neighbors: [C_TUNDRA, FOREST_6_4, T_VILLAGE]
-    has_encounter: true
-    board_position: [7, 4]
-
-  C_TUNDRA:
-    terrain: TUNDRA
-    neighbors: [FOREST_6_4]
-    river_neighbors: [C_FARM, C_MOUNTAIN]
+    neighbors: [A_TUNDRA, FACT_FOREST]
+    river_neighbors: [P_FOREST, P_VILLAGE]
+    lake_neighbors: [LAKE_1, LAKE_3]
     is_tunnel: true
-    board_position: [6,5]
-    
+    board_position: [3, 2]
+
+  FACT_FOREST:
+    terrain: FOREST
+    neighbors: [TNL_TUNDRA_0, TNL_MOUNTAIN, FACTORY]
+    river_neighbors: []
+    lake_neighbors: [LAKE_1, LAKE_2, LAKE_3]
+    board_position: [3, 3]
+
+  LAKE_2:
+    terrain: LAKE
+    neighbors: [TNL_TUNDRA_0, N_MOUNTAIN, FACT_FOREST, TNL_FOREST, FACTORY, FACT_MOUNTAIN]
+    board_position: [3,4]
+
+  R_VILLAGE:
+    terrain: VILLAGE
+    neighbors: [R_HOME, R_TUNDRA, R_MOUNTAIN]
+    river_neighbors: [N_FARM, R_FARM, TNL_FOREST]
+    board_position: [3, 5]
+
+  R_HOME:
+    terrain: HOME_BASE
+    neighbors: [R_VILLAGE, R_MOUNTAIN]
+    river_neighbors: [R_FARM]
+    board_position: [3, 6]
+
+  P_FARM:
+    terrain: FARM
+    neighbors: [P_HOME, P_FOREST, P_VILLAGE]
+    river_neighbors: [FOREST_5_0, FOREST_5_1]
+    board_position: [4, 0]
+  
+  P_VILLAGE:
+    terrain: VILLAGE
+    neighbors: [P_FOREST, P_FARM]
+    river_neighbors: [TNL_MOUNTAIN, FOREST_5_1, TNL_FARM]
+    lake_neighbors: [LAKE_3]
+    has_encounter: true
+    board_position: [4,1]
+
+  LAKE_3:
+    terrain: LAKE
+    neighbors: [TNL_MOUNTAIN, FACT_FOREST, P_VILLAGE, FACTORY, TNL_FARM, FACT_TUNDRA]
+    board_position: [4, 2]
+
+  FACTORY:
+    terrain: FACTORY
+    neighbors: [FACT_FOREST, FACT_MOUNTAIN, FACT_TUNDRA]
+    lake_neighbors: [LAKE_2, LAKE_3, LAKE_4]
+    board_position: [4, 3]
+
+  FACT_MOUNTAIN:
+    terrain: MOUNTAIN
+    neighbors: [TNL_FOREST, FACTORY, TNL_VILLAGE]
+    river_neighbors: [R_TUNDRA]
+    lake_neighbors: [LAKE_2, LAKE_4]
+    board_position: [4, 4]
+
+  R_TUNDRA:
+    terrain: TUNDRA
+    neighbors: [R_VILLAGE, R_MOUNTAIN]
+    river_neighbors: [TNL_FOREST, FACT_MOUNTAIN, TNL_VILLAGE]
+    lake_neighbors: [LAKE_5]
+    board_position: [4, 5]
+
+  R_MOUNTAIN:
+    terrain: MOUNTAIN
+    neighbors: [R_VILLAGE, R_HOME, R_TUNDRA]
+    lake_neighbors: [LAKE_5]
+    board_position: [4, 6]
+
+  FOREST_5_0:
+    terrain: FOREST
+    neighbors: [FOREST_5_1]
+    river_neighbors: [P_FARM, S_MOUNTAIN]
+    has_encounter: true
+    board_position: [5, 0]
+
+  FOREST_5_1:
+    terrain: FOREST
+    neighbors: [FOREST_5_0, TNL_FARM]
+    river_neighbors: [P_FARM, P_VILLAGE, S_MOUNTAIN, S_VILLAGE]
+    board_position: [5, 1]
+
+  TNL_FARM:
+    terrain: FARM
+    neighbors: [FOREST_5_1, FACT_TUNDRA, VILLAGE_6_2]
+    river_neighbors: [P_VILLAGE, S_VILLAGE]
+    lake_neighbors: [LAKE_3]
+    is_tunnel: true
+    board_position: [5, 2]
+
+  S_VILLAGE:
+    terrain: VILLAGE
+    neighbors: [S_MOUNTAIN, S_TUNDRA]
+    river_neighbors: [FOREST_5_1, TNL_FARM, VILLAGE_6_2]
+    lake_neighbors: [LAKE_6]
+    has_encounter: true
+    board_position: [6, 1]
+
   VILLAGE_6_2:
     terrain: VILLAGE
     neighbors: [C_TUNDRA]
     river_neighbors: [C_FARM]
     board_position: [6, 2]
     has_encounter: true
+  
+  TNL_TUNDRA_1:
+    terrain: TUNDRA
+    neighbors: [VILLAGE_6_2, FACT_TUNDRA, FOREST_6_4]
+    river_neighbors: [C_FARM, C_MOUNTAIN]
+    lake_neighbors: [LAKE_4]
+    is_tunnel: true
+    board_position: [6,3]
 
   FOREST_6_4:
     terrain: FOREST
     neighbors: [C_TUNDRA, T_MOUNTAIN, T_VILLAGE]
     river_neighbors: [C_MOUNTAIN]
     board_position: [6, 4]
-
-  T_HOME:
-    terrain: HOME_BASE
-    neighbors: [T_FARM, T_TUNDRA]
-    board_position: [7, 7]
-
-  T_FARM:
-    terrain: FARM
-    neighbors: [T_HOME, T_TUNDRA, T_MOUNTAIN, T_VILLAGE]
-    river_neighbors: []
-    board_position: [7, 6]
-
-  T_TUNDRA:
-    terrain: TUNDRA
-    neighbors: [T_HOME, T_FARM, T_MOUNTAIN]
-    river_neighbors: [N_FARM, N_VILLAGE]
-    board_position: [6, 6]
 
   T_MOUNTAIN:
     terrain: MOUNTAIN
@@ -140,8 +246,66 @@ hexes:
     has_encounter: true
     board_position: [6, 5]
 
+  T_TUNDRA:
+    terrain: TUNDRA
+    neighbors: [T_HOME, T_FARM, T_MOUNTAIN]
+    river_neighbors: [N_FARM, N_VILLAGE]
+    board_position: [6, 6]
+
+  S_HOME:
+    terrain: HOME_BASE
+    neighbors: [S_MOUNTAIN, S_TUNDRA]
+    river_neighbors: []
+    board_position: [7,0]
+
+  S_TUNDRA:
+    terrain: HOME_BASE
+    neighbors: [S_HOME, S_MOUNTAIN, LAKE_6]
+    river_neighbors: []
+    lake_neighbors: [LAKE_6]
+    board_position: [7,1]
+
+  LAKE_6:
+    terrain: LAKE
+    neighbors: [S_VILLAGE, VILLAGE_6_2, S_TUNDRA, C_FARM, C_HOME]
+    board_position: [7,2]
+
+  C_FARM:
+    terrain: FARM
+    neighbors: [C_VILLAGE, C_MOUNTAIN]
+    river_neighbors: [C_TUNDRA]
+    board_position: [7, 3]
+
+  C_MOUNTAIN:
+    terrain: MOUNTAIN
+    neighbors: [C_FARM, C_VILLAGE]
+    river_neighbors: [C_TUNDRA, FOREST_6_4, T_VILLAGE]
+    has_encounter: true
+    board_position: [7, 4]
+
   T_VILLAGE:
     terrain: VILLAGE
     neighbors: [T_FARM, T_MOUNTAIN, FOREST_6_4]
     river_neighbors: [C_MOUNTAIN]
     board_position: [7, 5]
+
+  T_FARM:
+    terrain: FARM
+    neighbors: [T_HOME, T_TUNDRA, T_MOUNTAIN, T_VILLAGE]
+    river_neighbors: []
+    board_position: [7, 6]
+
+  T_HOME:
+    terrain: HOME_BASE
+    neighbors: [T_FARM, T_TUNDRA]
+    board_position: [7, 7]
+
+  C_HOME:
+    terrain: HOME_BASE
+    neighbors: [C_FARM, C_VILLAGE]
+    board_position: [8, 2]
+
+  C_VILLAGE:
+    terrain: VILLAGE
+    neighbors: [C_HOME, C_FARM, C_MOUNTAIN]
+    board_position: [8, 3]

@@ -17,6 +17,7 @@ class Hex:
     terrain: Terrain
     neighbors: Tuple[HexId, ...] = ()
     river_neighbors: Tuple[HexId, ...] = ()
+    lake_neighbors: Tuple[HexId, ...] = ()
     has_encounter: bool = False
     is_tunnel: bool = False
     board_position: Tuple[int, int] = ()
