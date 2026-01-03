@@ -69,3 +69,10 @@ hexes:
     neighbors: [C_FARM, C_VILLAGE]
     river_neighbors: [FOREST]
     board_position: [9, 4]
+
+  VILLAGE_6_2:
+    terrain: VILLAGE
+    neighbors: [C_TUNDRA]
+    river_neighbors: [C_FARM]
+    board_position: [6, 2]
+    has_encounter: true
