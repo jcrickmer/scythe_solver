@@ -210,13 +210,19 @@ def make_minimal_opening_board() -> Board:
         "N_MOUNTAIN": Hex("N_MOUNTAIN", Terrain.MOUNTAIN, neighbors=("N_FOREST", "N_TUNDRA",), has_encounter=True, board_position=(2, 4)),
         "N_FARM": Hex("N_FARM", Terrain.FARM, neighbors=("N_VILLAGE",), river_neighbors=('N_TUNDRA', 'N_MOUNTAIN',), board_position=(2, 5)),
 
-        "C_HOME": Hex("C_HOME", Terrain.HOME_BASE, neighbors=("C_FARM", "C_VILLAGE"), board_position=(9, 1)),  # REVISIT board position
-        # REVISIT board position
-        "C_FARM": Hex("C_FARM", Terrain.FARM, neighbors=("C_HOME", "C_VILLAGE", "C_MOUNTAIN"), river_neighbors=("C_TUNDRA"), board_position=(9, 2)),
-        # REVISIT board position
-        "C_VILLAGE": Hex("C_VILLAGE", Terrain.VILLAGE, neighbors=("C_HOME", "C_FARM", "C_MOUNTAIN"), river_neighbors=(), board_position=(9, 3)),
-        # REVISIT board position
-        "C_MOUNTAIN": Hex("C_MOUNTAIN", Terrain.MOUNTAIN, neighbors=("C_FARM", "C_VILLAGE"), river_neighbors=("FOREST"), board_position=(9, 4)),
+        "C_HOME": Hex("C_HOME", Terrain.HOME_BASE, neighbors=("C_FARM", "C_VILLAGE"), board_position=(8, 2)),
+        "C_FARM": Hex("C_FARM", Terrain.FARM, neighbors=("C_HOME", "C_VILLAGE", "C_MOUNTAIN"), river_neighbors=("C_TUNDRA"), board_position=(7, 3)),
+        "C_VILLAGE": Hex("C_VILLAGE", Terrain.VILLAGE, neighbors=("C_HOME", "C_FARM", "C_MOUNTAIN"), river_neighbors=(), board_position=(8, 3)),
+        "C_MOUNTAIN": Hex("C_MOUNTAIN", Terrain.MOUNTAIN, neighbors=("C_FARM", "C_VILLAGE"), river_neighbors=("C_TUNDRA", "FOREST_6_4"), board_position=(7, 4)),
+
+
+        "T_HOME": Hex("T_HOME", Terrain.HOME_BASE, neighbors=("T_FARM", "T_TUNDRA"), board_position=(7, 7)),
+        "T_FARM": Hex("C_FARM", Terrain.FARM, neighbors=("T_HOME", "T_TUNDRA", "T_MOUNTAIN", "T_VILLAGE"), board_position=(7, 6)),
+        "T_TUNDRA": Hex("T_TUNDRA", Terrain.TUNDRA, neighbors=("T_HOME", "T_FARM", "T_MOUNTAIN"), board_position=(6, 6)),
+        "T_MOUNTAIN": Hex("T_MOUNTAIN", Terrain.MOUNTAIN, neighbors=("T_FARM", "T_TUNDRA", "FOREST_6_4"), has_encounter=True, board_position=(6, 5)),
+        "T_VILLAGE": Hex("T_VILLAGE", Terrain.VILLAGE, neighbors=("T_FARM", "T_MOUNTAIN"), river_neighbors=("C_MOUNTAIN"), board_position=(7, 5)),
+
+        "FOREST_6_4": Hex("FOREST_6_4", Terrain.FOREST, neighbors=("C_MOUNTAIN", "C_TUNDRA"), river_neighbors=("C_MOUNTAIN"), board_position=(6, 4)),
 
     }
     return Board(hexes=hx)
@@ -289,7 +295,13 @@ def nordic_config() -> Faction:
 def crimea_config() -> Faction:
     return Faction(
         name="Crimea",
-        special_rules=("TODO: Nordic riverwalk / swim rules",),
+        special_rules=("TODO: ",),
+    )
+
+def togawa_config() -> Faction:
+    return Faction(
+        name="Togawa",
+        special_rules=("TODO: ",),
     )
 
 
@@ -1251,6 +1263,45 @@ def make_start_state_crimea_industrial() -> GameState:
         last_top_action=None,
     )
 
+def make_start_state_togawa_industrial() -> GameState:
+    board = make_minimal_opening_board()
+    faction = togawa_config()
+    # mat = industrial_mat_config()
+    mat = IndustrialMat()
+
+    # Placeholder start:
+    # - Character starts at home
+    # - 2 workers on home (tuple of locations)
+    # - 0 mechs
+    # - starting resources/coins/power/popularity: fill in true values later
+    units = Units(
+        character="T_HOME",
+        mechs=(),
+        workers=(("T_TUNDRA", 1), ("T_FARM", 1)),
+        structures=()
+    )
+    econ = Economy(
+        coins=4,
+        power=0,
+        popularity=2,
+        resources=tuple(sorted({Resource.FOOD: 0, Resource.WOOD: 0, Resource.METAL: 0, Resource.OIL: 0, Resource.WORKER: 0}.items(),
+                               key=lambda x: x[0].value)),
+        combat_cards=2,
+    )
+    prog = mat.init_progress()
+
+    return GameState(
+        faction=faction,
+        mat=mat,
+        board=board,
+        units=units,
+        econ=econ,
+        prog=prog,
+        turn=0,
+        last_top_action=None,
+    )
+
+
 
 # -----------------------------
 # Demo runner
@@ -1277,8 +1328,9 @@ def summarize_state(s: GameState) -> str:
 
 if __name__ == "__main__":
     engine = Engine()
-    start = make_start_state_nordic_industrial()
+    # start = make_start_state_nordic_industrial()
     # start = make_start_state_crimea_industrial()
+    start = make_start_state_togawa_industrial()
 
     lines = beam_search_openings(engine, start, turns=8, beam_width=1000)
 
