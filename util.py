@@ -3,6 +3,7 @@
 from board import HexId
 from typing import List, Tuple
 
+
 def add_to_tuple_map(data: tuple[tuple[HexId, int], ...],
                      addition: tuple[HexId, int],
                      ) -> tuple[tuple[HexId, int], ...]:
