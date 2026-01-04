@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import IntEnum, auto
+import yaml
 from units import Resource
 
 # -----------------------------
@@ -36,6 +37,27 @@ class Board:
 
     def terrain(self, hid: HexId) -> Terrain:
         return self.hexes[hid].terrain
+
+    @classmethod
+    def load_board_from_yaml(cls, path: str | Path) -> Board:
+        with open(path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+
+        hexes: dict[str, Hex] = {}
+
+        for hid, spec in data["hexes"].items():
+            hexes[hid] = Hex(
+                hid=hid,
+                terrain=Terrain[spec["terrain"]],
+                neighbors=tuple(spec.get("neighbors", [])),
+                river_neighbors=tuple(spec.get("river_neighbors", [])),
+                lake_neighbors=tuple(spec.get("lake_neighbors", [])),
+                has_encounter=spec.get("has_encounter", False),
+                is_tunnel=spec.get("is_tunnel", False),
+                board_position=tuple(spec.get("board_position", (0, 0))),
+            )
+
+        return Board(hexes=hexes)
 
 
 class Terrain(IntEnum):

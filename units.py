@@ -3,6 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import IntEnum, Enum, auto
 
+# -----------------------------
+# Basic identifiers / enums
+# -----------------------------
+
 
 class Resource(IntEnum):
     FOOD = auto()

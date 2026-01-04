@@ -99,3 +99,31 @@ def power_bell(power: int, n_mechs: int, sigma: float = 3.0) -> float:
 
     # Standard Gaussian centered at `ideal`, max = 1.0 at the peak
     return math.exp(-0.5 * ((power - ideal) / sigma) ** 2)
+
+
+class Scythe():
+    GOAL_UPGRADES = 6
+    GOAL_MECHS = 4
+    GOAL_STRUCTURES = 4
+    GOAL_ENLISTS = 4
+    GOAL_WORKERS = 8
+    GOAL_OBJECTIVE = 1
+    GOAL_COMBAT = 2
+    GOAL_POPULARITY = 18
+    GOAL_POWER = 16
+
+    POPULARITY_TIER_0 = {'ceiling': 6,
+                         'stars': 3,
+                         'territory': 2,
+                         'resources': 1,
+                         }
+    POPULARITY_TIER_1 = {'ceiling': 12,
+                         'stars': 4,
+                         'territory': 3,
+                         'resources': 2,
+                         }
+    POPULARITY_TIER_2 = {'ceiling': 18,
+                         'stars': 5,
+                         'territory': 4,
+                         'resources': 3,
+                         }

@@ -17,6 +17,7 @@ class Faction:
     special_rules: Tuple[str, ...] = ()
     unit_start: Tuple[str, ...] = ()
 
+
 def albion_config() -> Faction:
     from gamestate import Units
     return Faction(

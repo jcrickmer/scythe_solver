@@ -18,7 +18,6 @@ import heapq
 import math
 import statistics
 from itertools import combinations
-import yaml
 from pathlib import Path
 import psutil
 from board import HexId, Hex, Board, Terrain
@@ -32,90 +31,6 @@ process = psutil.Process()
 # print(process.memory_info().rss)
 
 # from collections import Counter
-
-
-# -----------------------------
-# Basic identifiers / enums
-# -----------------------------
-class Scythe():
-    GOAL_UPGRADES = 6
-    GOAL_MECHS = 4
-    GOAL_STRUCTURES = 4
-    GOAL_ENLISTS = 4
-    GOAL_WORKERS = 8
-    GOAL_OBJECTIVE = 1
-    GOAL_COMBAT = 2
-    GOAL_POPULARITY = 18
-    GOAL_POWER = 16
-
-    POPULARITY_TIER_0 = {'ceiling': 6,
-                         'stars': 3,
-                         'territory': 2,
-                         'resources': 1,
-                         }
-    POPULARITY_TIER_1 = {'ceiling': 12,
-                         'stars': 4,
-                         'territory': 3,
-                         'resources': 2,
-                         }
-    POPULARITY_TIER_2 = {'ceiling': 18,
-                         'stars': 5,
-                         'territory': 4,
-                         'resources': 3,
-                         }
-
-
-def make_minimal_opening_board() -> Board:
-    """
-    Placeholder board for early-turn modeling.
-    Replace with full Scythe map later.
-    """
-    hx = {
-        "N_HOME": Hex("N_HOME", Terrain.HOME_BASE, neighbors=("N_FOREST", "N_TUNDRA",), board_position=(0, 1)),
-        "A_VILLAGE": Hex("A_VILLAGE", Terrain.VILLAGE, neighbors=(), river_neighbors=("TUNDRA_2_3", "N_FOREST"), has_encounter=True, board_position=(1, 3)),
-        "N_FOREST": Hex("N_FOREST", Terrain.FOREST, neighbors=("N_HOME", "N_TUNDRA", "N_MOUNTAIN",), river_neighbors=('A_VILLAGE', 'TUNDRA_2_3'), board_position=(1, 4)),
-        "N_TUNDRA": Hex("N_TUNDRA", Terrain.TUNDRA, neighbors=("N_HOME", "N_FOREST", "N_MOUNTAIN",), river_neighbors=('N_FARM', 'N_VILLAGE'), board_position=(1, 5)),
-        "N_VILLAGE": Hex("N_VILLAGE", Terrain.VILLAGE, neighbors=("N_FARM",), river_neighbors=('N_TUNDRA',), board_position=(1, 6)),
-        "TUNDRA_2_3": Hex("TUNDRA_2_3", Terrain.TUNDRA, neighbors=(), river_neighbors=('A_VILLAGE', 'N_FOREST', 'N_MOUNTAIN',), is_tunnel=True, board_position=(2, 3)),
-        "N_MOUNTAIN": Hex("N_MOUNTAIN", Terrain.MOUNTAIN, neighbors=("N_FOREST", "N_TUNDRA",), has_encounter=True, board_position=(2, 4)),
-        "N_FARM": Hex("N_FARM", Terrain.FARM, neighbors=("N_VILLAGE",), river_neighbors=('N_TUNDRA', 'N_MOUNTAIN',), board_position=(2, 5)),
-
-        "C_HOME": Hex("C_HOME", Terrain.HOME_BASE, neighbors=("C_FARM", "C_VILLAGE"), board_position=(8, 2)),
-        "C_FARM": Hex("C_FARM", Terrain.FARM, neighbors=("C_HOME", "C_VILLAGE", "C_MOUNTAIN"), river_neighbors=("C_TUNDRA"), board_position=(7, 3)),
-        "C_VILLAGE": Hex("C_VILLAGE", Terrain.VILLAGE, neighbors=("C_HOME", "C_FARM", "C_MOUNTAIN"), river_neighbors=(), board_position=(8, 3)),
-        "C_MOUNTAIN": Hex("C_MOUNTAIN", Terrain.MOUNTAIN, neighbors=("C_FARM", "C_VILLAGE"), river_neighbors=("C_TUNDRA", "FOREST_6_4"), board_position=(7, 4)),
-
-
-        "T_HOME": Hex("T_HOME", Terrain.HOME_BASE, neighbors=("T_FARM", "T_TUNDRA"), board_position=(7, 7)),
-        "T_FARM": Hex("C_FARM", Terrain.FARM, neighbors=("T_HOME", "T_TUNDRA", "T_MOUNTAIN", "T_VILLAGE"), board_position=(7, 6)),
-        "T_TUNDRA": Hex("T_TUNDRA", Terrain.TUNDRA, neighbors=("T_HOME", "T_FARM", "T_MOUNTAIN"), board_position=(6, 6)),
-        "T_MOUNTAIN": Hex("T_MOUNTAIN", Terrain.MOUNTAIN, neighbors=("T_FARM", "T_TUNDRA", "FOREST_6_4"), has_encounter=True, board_position=(6, 5)),
-        "T_VILLAGE": Hex("T_VILLAGE", Terrain.VILLAGE, neighbors=("T_FARM", "T_MOUNTAIN"), river_neighbors=("C_MOUNTAIN"), board_position=(7, 5)),
-
-        "FOREST_6_4": Hex("FOREST_6_4", Terrain.FOREST, neighbors=("C_MOUNTAIN", "C_TUNDRA"), river_neighbors=("C_MOUNTAIN"), board_position=(6, 4)),
-
-    }
-    return Board(hexes=hx)
-
-
-def load_board_from_yaml(path: str | Path) -> Board:
-    with open(path, "r", encoding="utf-8") as f:
-        data = yaml.safe_load(f)
-
-    hexes: dict[str, Hex] = {}
-
-    for hid, spec in data["hexes"].items():
-        hexes[hid] = Hex(
-            hid=hid,
-            terrain=Terrain[spec["terrain"]],
-            neighbors=tuple(spec.get("neighbors", [])),
-            river_neighbors=tuple(spec.get("river_neighbors", [])),
-            has_encounter=spec.get("has_encounter", False),
-            is_tunnel=spec.get("is_tunnel", False),
-            board_position=tuple(spec.get("board_position", (0, 0))),
-        )
-
-    return Board(hexes=hexes)
 
 
 # -----------------------------
@@ -1141,10 +1056,9 @@ def beam_search_openings(
 # -----------------------------
 
 def make_start_state_general(faction_, mat_) -> GameState:
-    board = load_board_from_yaml("board.yaml")
+    board = Board.load_board_from_yaml("board.yaml")
 
     faction = faction_()
-    # mat = industrial_mat_config()
     mat = mat_()
 
     # Placeholder start:
