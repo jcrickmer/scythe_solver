@@ -26,6 +26,7 @@ import scorer
 from gamestate import GameState, Units, Progress, Economy
 from factions import Faction, albion_config, togawa_config, nordic_config, crimea_config, polania_config, rusviet_config, saxony_config
 from units import TopActionType, BottomActionType, BottomActionBonus, TopUpgradeChoice, BottomUpgradeChoice, Popularity, Structure
+from util import add_to_tuple_map, bounded_allocations
 
 process = psutil.Process()
 # print(process.memory_info().rss)
@@ -939,45 +940,6 @@ class Engine:
         return replace(s, turn=s.turn + 1)
 
 
-def add_to_tuple_map(data: tuple[tuple[HexId, int], ...],
-                     addition: tuple[HexId, int],
-                     ) -> tuple[tuple[HexId, int], ...]:
-    if len(addition) == 0:
-        return data
-    k, delta = addition
-    d = dict(data)
-    d[k] = d.get(k, 0) + delta
-    return tuple(sorted(d.items()))
-
-
-def bounded_allocations(bounds: List[int], total: int) -> List[Tuple[int, ...]]:
-    """
-    Return all tuples a where:
-      - len(a) == len(bounds)
-      - 0 <= a[i] <= bounds[i]
-      - sum(a) == total
-
-    Example:
-      bounds=[3,2], total=2 -> [(0,2),(1,1),(2,0)]
-    """
-    result: List[Tuple[int, ...]] = []
-
-    def rec(i: int, remaining: int, acc: List[int]) -> None:
-        if i == len(bounds):
-            if remaining == 0:
-                result.append(tuple(acc))
-            return
-
-        max_take = min(bounds[i], remaining)
-        for take in range(0, max_take + 1):
-            acc.append(take)
-            rec(i + 1, remaining - take, acc)
-            acc.pop()
-
-    rec(0, total, [])
-    return result
-
-
 # -----------------------------
 # Search (beam search)
 # -----------------------------
@@ -1094,12 +1056,9 @@ def make_start_state_general(faction_, mat_) -> GameState:
 # -----------------------------
 
 def summarize_state(s: GameState) -> str:
-    res = dict(s.econ.resources)
     territories = s.units.territories_controlled()
     return (
-        f"Turn={s.turn}  Coins={s.econ.coins}  Pow={s.econ.power}  Pop={s.econ.popularity}  "
-        f"Res(F/W/M/O)=({res.get(Resource.FOOD, 0)}/{res.get(Resource.WOOD, 0)}/"
-        f"{res.get(Resource.METAL, 0)}/{res.get(Resource.OIL, 0)})  "
+        f"Turn={s.turn}  {s.econ}  "
         f"Territories={territories}  "
         f"Workers={sum(x for _, x in s.units.workers)}  Mechs={sum(x for _, x in s.units.mechs)}  "
         f"Upg={s.prog.upgrades_done}  Dep={s.prog.mechs_deployed}  "
@@ -1108,7 +1067,6 @@ def summarize_state(s: GameState) -> str:
         f"Char@{s.units.character}"
         f"\n    prog={s.prog}"
         f"\n    units={s.units}"
-        f"\n    econ={s.econ}"
     )
 
 

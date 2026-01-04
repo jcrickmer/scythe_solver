@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
-from units import BottomActionType
+from units import BottomActionType, Resource
 from board import Board
 from factions import Faction
 
@@ -55,7 +55,7 @@ class Units:
         return sum(value for _, value in self.workers)
 
     def territories_controlled(self):
-        return set(key for key, _ in self.workers) | set([self.character]) | set(self.mechs)
+        return set(key for key, _ in self.workers) | set([self.character]) | set(key for key, _ in self.mechs)
 
 
 @dataclass(frozen=True)
@@ -65,6 +65,14 @@ class Economy:
     popularity: int = 0
     resources: Tuple[Tuple[Resource, int], ...] = ()
     combat_cards: int = 0
+
+    def __str__(self) -> str:
+        res = dict(self.resources)
+        return (f"Coins={self.coins}  "
+                f"Res(F/W/M/O)=({res.get(Resource.FOOD, 0)}/{res.get(Resource.WOOD, 0)}/"
+                f"{res.get(Resource.METAL, 0)}/{res.get(Resource.OIL, 0)})  "
+                f"Popularity={self.popularity}  Power={self.power}  Cards={self.combat_cards} "
+                )
 
     def res_dict(self) -> Dict[Resource, int]:
         return dict(self.resources)
