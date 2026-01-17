@@ -114,8 +114,14 @@ class Progress:
     # On the Player Mat, each BottomAction can have a bonus becuase of past Enlist actions
     bottom_bonuses: Tuple[BottomActionType] = ()
 
+    def __str__(self) -> str:
+        return (f"Upgrades={self.upgrades_done} "
+                f"Enlists={self.enlists} "
+                f"Stars={self.stars_earned()}"
+                )
+
     # Track “which bottom actions have been upgraded” etc. later.
-    def stars_earned(self):
+    def stars_earned(self) -> int:
         stars = 0
         if self.upgrades_done == 6:
             stars = stars + 1

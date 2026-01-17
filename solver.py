@@ -160,7 +160,7 @@ class EngineeringMat(PlayerMat):  # Mat 2
                                                       BottomUpgradeChoice.DEPLOY_COST,
                                                       BottomUpgradeChoice.DEPLOY_COST,
                                                       BottomUpgradeChoice.BUILD_COST,
-                                                      BottomUpgradeChoice.BLIUD_COST,
+                                                      BottomUpgradeChoice.BUILD_COST,
                                                       BottomUpgradeChoice.ENLIST_COST,
                                                       ),)
         return prog
@@ -965,11 +965,12 @@ def beam_search_openings(
     Expand turn by turn. Keep best K lines each turn.
     """
     frontier: List[Line] = [Line(state=start, turn_actions=())]
-
+    verbose = False
     for _ in range(turns):
         candidates: List[Tuple[float, int, Line]] = []
         uid = 0
-        print("Turn {}, frontier size is {}, memory is {} MB".format(_, len(frontier), process.memory_info().rss / 1024.0 / 1024.0))
+        if verbose:
+            print("Turn {}, frontier size is {}, memory is {} MB".format(_, len(frontier), process.memory_info().rss / 1024.0 / 1024.0))
         for line in frontier:
             s = line.state
             top_choices = engine.legal_top_choices(s)
@@ -995,19 +996,22 @@ def beam_search_openings(
                     uid += 1
 
         # keep best beam_width
-        print("   candidate size is {}".format(len(candidates)))
+        if verbose:
+            print("   candidate size is {}".format(len(candidates)))
         all_scrs = [scr for scr, _, _ in candidates]
-        print(
-            "      max={}, min={}, mean={}, median={}".format(
-                max(all_scrs),
-                min(all_scrs),
-                statistics.mean(all_scrs),
-                statistics.median(all_scrs)))
+        if verbose:
+            print(
+                "      max={}, min={}, mean={}, median={}".format(
+                    max(all_scrs),
+                    min(all_scrs),
+                    statistics.mean(all_scrs),
+                    statistics.median(all_scrs)))
         best = heapq.nlargest(beam_width, candidates, key=lambda x: x[0])
         frontier = [ln for _, _, ln in best]
         scrs = [scr for scr, _, _ in best]
-        print("   candidates post beam {}".format(len(best)))
-        print("      max={}, min={}, mean={}, median={}".format(max(scrs), min(scrs), statistics.mean(scrs), statistics.median(scrs)))
+        if verbose:
+            print("   candidates post beam {}".format(len(best)))
+            print("      max={}, min={}, mean={}, median={}".format(max(scrs), min(scrs), statistics.mean(scrs), statistics.median(scrs)))
 
     # return best lines overall
     return sorted(frontier, key=lambda ln: line_scorer(ln.state), reverse=True)
