@@ -46,8 +46,7 @@ class GameState:
 class Units:
     """Positions of units. Keep simple for openings."""
     character: HexId
-    mechs: Tuple[Tuple[HexId, int], ...] = ()
-    # store workers as a multiset (hid repeated) or a count map for compactness
+    mechs: Tuple[Tuple[HexId, Mech], ...] = ()
     workers: Tuple[Tuple[HexId, int], ...] = ()
     structures: Tuple[Tuple[Structure, HexId], ...] = ()
 

@@ -24,7 +24,7 @@ def line_score(s: GameState) -> float:
 
 def midgame_score(s: GameState) -> float:
     workers = sum(value for _, value in s.units.workers)
-    mechs = sum(value for _, value in s.units.mechs)
+    mechs = len(set(value for (_, value) in s.units.mechs))
     territory_count = len(s.units.territories_controlled())
     score = 0.0
     score += 6.0 * mechs
@@ -39,7 +39,7 @@ def midgame_score(s: GameState) -> float:
 def endgame_score(s: GameState) -> float:
     territory_count = len(s.units.territories_controlled())
     workers = sum(value for _, value in s.units.workers)
-    mechs = sum(value for _, value in s.units.mechs)
+    mechs = len(set(value for (_, value) in s.units.mechs))
     score = 0.0
     score += 1.0
     score += 3.0 * s.econ.popularity
@@ -54,7 +54,7 @@ def opening_score(s: GameState) -> float:
     Adjust weights as you learn what “good” looks like for Nordic + Industrial.
     """
     workers = sum(value for _, value in s.units.workers)
-    mechs = sum(value for _, value in s.units.mechs)
+    mechs = len(set(value for (_, value) in s.units.mechs))
 
     # Weighted progress
     score = 0.0

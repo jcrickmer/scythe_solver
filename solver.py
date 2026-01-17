@@ -805,7 +805,12 @@ class Engine:
         #   * mech abilities altering things like move by picking up workers
         #   * mech ability River Walk
         #   * mech bonus of Speed to all moves
-        return [BottomChoice(BottomActionType.DEPLOY, params=("MECH needs stuff"))]
+        choices = list()
+        available = tuple(item for item in s.faction.mech_bench if item not in set(val for (_, val) in s.units.mechs))
+        for avail_mech in available:
+            for (terr_hex, wcount) in set(tht for tht in s.units.workers):
+                choices.append(BottomChoice(BottomActionType.DEPLOY, params=(terr_hex, avail_mech)))
+        return choices
 
     def _legal_build_choices(self, s: GameState) -> List[BottomChoice]:
         # for any hex that has a worker on it we can put a structure on it.
@@ -864,13 +869,13 @@ class Engine:
         return replace(s3, prog=prog)
 
     def _apply_deploy(self, s: GameState, params) -> GameState:
+        # params are going to be (HexId, Mech)
+        (hid, mech) = params
         prog = s.prog
         prog = replace(prog, mechs_deployed=prog.mechs_deployed + 1)
-        hid: HexId = None
-        for (whid, wcount) in s.units.workers:
-            hid = whid
-            break
-        fff = replace(s.units, mechs=add_to_tuple_map(s.units.mechs, (hid, 1)))
+        # REVISIT - mechs tuple is HexId,Mech
+        hex_mech_t = s.units.mechs + (params,)
+        fff = replace(s.units, mechs=hex_mech_t)
         return replace(s, prog=prog, units=fff)
 
     def _apply_build(self, s: GameState, params: Tuple[Structure, HexId]) -> GameState:
@@ -1064,7 +1069,7 @@ def summarize_state(s: GameState) -> str:
     return (
         f"Turn={s.turn}  {s.econ}  "
         f"Territories={territories}  "
-        f"Workers={sum(x for _, x in s.units.workers)}  Mechs={sum(x for _, x in s.units.mechs)}  "
+        f"Workers={sum(x for _, x in s.units.workers)}  Mechs={len(set(x for _, x in s.units.mechs))}  "
         f"Upg={s.prog.upgrades_done}  Dep={s.prog.mechs_deployed}  "
         f"Build={s.prog.structures_built}  Enlist={s.prog.enlists}  "
         f"Combat Cards={s.econ.combat_cards}  "

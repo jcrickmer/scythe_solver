@@ -23,6 +23,32 @@ class Structure(IntEnum):
     ARMORY = auto()
 
 
+class Mech(IntEnum):
+    RIVERWALK_FORESTS_MOUNTAINS = auto()
+    UNDERPASS = auto()
+    DISARM = auto()
+    SPEED = auto()
+    RIVERWALK_FARMS_VILLAGES = auto()
+    TOWNSHIP = auto()
+    PEOPLES_ARMY = auto()
+    SEAWORTHY = auto()
+    ARTILLERY = auto()
+    RIVERWALK_FARMS_TUNDRA = auto()
+    WAYFARE = auto()
+    SCOUT = auto()
+    RIVERWALK_VILLAGES_MOUNTAINS = auto()
+    SUBMERGE = auto()
+    CAMARADERIE = auto()
+    BURROW = auto()
+    SWORD = auto()
+    SHIELD = auto()
+    RALLY = auto()
+    TOKA = auto()
+    SUITON = auto()
+    RONIN = auto()
+    SHINOBI = auto()
+
+
 class Popularity(Enum):
     POPULARITY = auto()
 
