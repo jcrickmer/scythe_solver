@@ -72,6 +72,7 @@ def saxony_config() -> Faction:
         start_cards=4,
         special_rules=("TODO: ",),
         unit_start=Units(character="S_HOME", mechs=(), workers=(("S_MOUNTAIN", 1), ("S_TUNDRA", 1)), structures=()),
+        mech_bench=(Mech.RIVERWALK_FORESTS_MOUNTAINS, Mech.UNDERPASS, Mech.DISARM, Mech.SPEED),
     )
 
 
