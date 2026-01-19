@@ -54,7 +54,7 @@ class Units:
         return sum(value for _, value in self.workers)
 
     def territories_controlled(self):
-        return set(key for key, _ in self.workers) | set([self.character]) | set(key for key, _ in self.mechs)
+        return set(key for key, _ in self.workers) | set([self.character]) | set(hexid for (hexid, _) in self.mechs)
 
 
 @dataclass(frozen=True)

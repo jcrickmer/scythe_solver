@@ -545,13 +545,13 @@ class Engine:
                     result.append(TurnChoice(TopActionType.MOVE, params=(TopActionType.MOVE_UNIT_WORKER, territory, n, workers)))
 
         # and now allow workers to move
-        for (territory, mech) in s.units.mechs:
-            # print("L549 considering moving {} mech from {}".format(mech, territory))
-            all_neighbors = s.board.neighbors(territory) + s.board.river_neighbors(territory)
+        for (from_hexid, mech) in s.units.mechs:
+            # print("L549 considering moving {} mech from {}".format(mech, from_hexid))
+            all_neighbors = s.board.neighbors(from_hexid) + s.board.river_neighbors(from_hexid)
             available_hexids = list()
             for to_hexid in all_neighbors:
-                if self._can_move(s, TopActionType.MOVE_UNIT_MECH, territory, to_hexid):
-                    result.append(TurnChoice(TopActionType.MOVE, params=(TopActionType.MOVE_UNIT_MECH, territory, to_hexid, mech)))
+                if self._can_move(s, TopActionType.MOVE_UNIT_MECH, from_hexid, to_hexid):
+                    result.append(TurnChoice(TopActionType.MOVE, params=(TopActionType.MOVE_UNIT_MECH, from_hexid, to_hexid, mech)))
                     # REVISIT - picking up workers and moving them
 
         # REVISIT - speed mech movement
@@ -743,8 +743,8 @@ class Engine:
             new_units = replace(s.units, workers=new_worker_tuple)
         elif unit_type == TopActionType.MOVE_UNIT_MECH:
             # params here has the unit_count being the mech id. But it doesn't really matter.
-            minus = add_to_tuple_map(s.units.mechs, (source_hid, -1))
-            added = add_to_tuple_map(minus, (dest_hid, 1))
+            minus = tuple((hid, mmm) for (hid, mmm) in s.units.mechs if mmm != unit_count)
+            added = minus + ((dest_hid, unit_count),)
             new_units = replace(s.units, mechs=added)
 
         return replace(s, units=new_units, last_top_action=TopActionType.MOVE, prog=prog)
