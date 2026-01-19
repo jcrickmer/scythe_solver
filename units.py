@@ -8,12 +8,6 @@ from enum import IntEnum, Enum, auto
 # -----------------------------
 
 
-class MoveableUnit(IntEnum):
-    WORKER = auto()
-    CHARACTER = auto()
-    MECH = auto()
-
-
 class Resource(IntEnum):
     FOOD = auto()
     WOOD = auto()

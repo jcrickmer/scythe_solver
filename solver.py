@@ -25,7 +25,7 @@ from units import Resource
 import scorer
 from gamestate import GameState, Units, Progress, Economy
 from factions import Faction, albion_config, togawa_config, nordic_config, crimea_config, polania_config, rusviet_config, saxony_config
-from units import TopActionType, BottomActionType, BottomActionBonus, TopUpgradeChoice, BottomUpgradeChoice, Popularity, Structure, MoveableUnit, Mech
+from units import TopActionType, BottomActionType, BottomActionBonus, TopUpgradeChoice, BottomUpgradeChoice, Popularity, Structure, Mech
 from util import add_to_tuple_map, bounded_allocations
 
 process = psutil.Process()
@@ -528,7 +528,7 @@ class Engine:
             here = s.units.character
             all_neighbors = s.board.neighbors(here) + s.board.river_neighbors(here)
             for to_hexid in all_neighbors:
-                if self._can_move(s, MoveableUnit.CHARACTER, here, to_hexid):
+                if self._can_move(s, TopActionType.MOVE_UNIT_CHARACTER, here, to_hexid):
                     result.append(TurnChoice(TopActionType.MOVE, params=(TopActionType.MOVE_UNIT_CHARACTER, here, to_hexid, 1)))
 
         # and now allow workers to move
@@ -538,13 +538,21 @@ class Engine:
             all_neighbors = s.board.neighbors(territory) + s.board.river_neighbors(territory)
             available_hexids = list()
             for to_hexid in all_neighbors:
-                if self._can_move(s, MoveableUnit.WORKER, territory, to_hexid):
+                if self._can_move(s, TopActionType.MOVE_UNIT_WORKER, territory, to_hexid):
                     available_hexids.append(to_hexid)
             for workers in range(1, worker_count + 1):
                 for n in all_neighbors:
                     result.append(TurnChoice(TopActionType.MOVE, params=(TopActionType.MOVE_UNIT_WORKER, territory, n, workers)))
 
-        # REVISIT - mech movement
+        # and now allow workers to move
+        for (territory, mech) in s.units.mechs:
+            # print("L549 considering moving {} mech from {}".format(mech, territory))
+            all_neighbors = s.board.neighbors(territory) + s.board.river_neighbors(territory)
+            available_hexids = list()
+            for to_hexid in all_neighbors:
+                if self._can_move(s, TopActionType.MOVE_UNIT_MECH, territory, to_hexid):
+                    result.append(TurnChoice(TopActionType.MOVE, params=(TopActionType.MOVE_UNIT_MECH, territory, to_hexid, mech)))
+                    # REVISIT - picking up workers and moving them
 
         # REVISIT - speed mech movement
 
@@ -552,12 +560,12 @@ class Engine:
 
         return tuple(result)
 
-    def _can_move(self, s: GameState, unit_type: MoveableUnit, from_hexid: HexId, to_hexid: HexId):
+    def _can_move(self, s: GameState, unit_type: Enum, from_hexid: HexId, to_hexid: HexId):
         result = True
         neighbors = s.board.neighbors(from_hexid)
         river_neighbors = s.board.river_neighbors(from_hexid)
         match unit_type:
-            case MoveableUnit.WORKER:
+            case TopActionType.MOVE_UNIT_CHARACTER:
                 if to_hexid in neighbors:
                     result = True
                 elif s.faction.name == 'Nordic' and to_hexid in river_neighbors:
@@ -565,12 +573,12 @@ class Engine:
                     result = True
                 else:
                     result = False
-            case MoveableUnit.CHARACTER:
+            case TopActionType.MOVE_UNIT_CHARACTER:
                 if to_hexid in neighbors:
                     result = True
                 else:
                     result = False
-            case MoveableUnit.MECH:
+            case TopActionType.MOVE_UNIT_MECH:
                 if to_hexid in neighbors:
                     result = True
                 else:
@@ -734,8 +742,10 @@ class Engine:
             new_worker_tuple = tuple(tuple(hidwc) for hidwc in new_worker_list if hidwc[1] > 0)
             new_units = replace(s.units, workers=new_worker_tuple)
         elif unit_type == TopActionType.MOVE_UNIT_MECH:
-            # REVISIT - To do
-            pass
+            # params here has the unit_count being the mech id. But it doesn't really matter.
+            minus = add_to_tuple_map(s.units.mechs, (source_hid, -1))
+            added = add_to_tuple_map(minus, (dest_hid, 1))
+            new_units = replace(s.units, mechs=added)
 
         return replace(s, units=new_units, last_top_action=TopActionType.MOVE, prog=prog)
 
