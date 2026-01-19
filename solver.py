@@ -25,7 +25,7 @@ from units import Resource
 import scorer
 from gamestate import GameState, Units, Progress, Economy
 from factions import Faction, albion_config, togawa_config, nordic_config, crimea_config, polania_config, rusviet_config, saxony_config
-from units import TopActionType, BottomActionType, BottomActionBonus, TopUpgradeChoice, BottomUpgradeChoice, Popularity, Structure
+from units import TopActionType, BottomActionType, BottomActionBonus, TopUpgradeChoice, BottomUpgradeChoice, Popularity, Structure, MoveableUnit, Mech
 from util import add_to_tuple_map, bounded_allocations
 
 process = psutil.Process()
@@ -521,32 +521,77 @@ class Engine:
         return choices
 
     def _legal_move_choices(self, s: GameState) -> List[TurnChoice]:
-        # Skeleton: allow character to move to any neighbor.
-        here = s.units.character
-        result = [TurnChoice(TopActionType.MOVE, params=(TopActionType.MOVE_UNIT_CHARACTER, here, n, 1)) for n in s.board.neighbors(here)]
+        result = list()
+
+        if 1:  # character movement
+            # Skeleton: allow character to move to any neighbor.
+            here = s.units.character
+            all_neighbors = s.board.neighbors(here) + s.board.river_neighbors(here)
+            for to_hexid in all_neighbors:
+                if self._can_move(s, MoveableUnit.CHARACTER, here, to_hexid):
+                    result.append(TurnChoice(TopActionType.MOVE, params=(TopActionType.MOVE_UNIT_CHARACTER, here, to_hexid, 1)))
 
         # and now allow workers to move
         for (territory, worker_count) in s.units.workers:
             # print("L363 considering moving {} workers from {}".format(worker_count, territory))
             # territory_tuple is a [hid, worker_count]
-            neighbors = s.board.neighbors(territory)
-            if s.faction.name == 'Nordic':
-                # swim rule for workers
-                neighbors = neighbors + s.board.river_neighbors(territory)
+            all_neighbors = s.board.neighbors(territory) + s.board.river_neighbors(territory)
+            available_hexids = list()
+            for to_hexid in all_neighbors:
+                if self._can_move(s, MoveableUnit.WORKER, territory, to_hexid):
+                    available_hexids.append(to_hexid)
             for workers in range(1, worker_count + 1):
-                mmm = [TurnChoice(TopActionType.MOVE, params=(TopActionType.MOVE_UNIT_WORKER, territory, n, workers)) for n in neighbors]
-                result = result + mmm
-                # print("    L369 and choices are {}".format(result))
+                for n in all_neighbors:
+                    result.append(TurnChoice(TopActionType.MOVE, params=(TopActionType.MOVE_UNIT_WORKER, territory, n, workers)))
+
         # REVISIT - mech movement
 
         # REVISIT - speed mech movement
 
         # REVISIT - upgrade allows more moves
 
+        return tuple(result)
+
+    def _can_move(self, s: GameState, unit_type: MoveableUnit, from_hexid: HexId, to_hexid: HexId):
+        result = True
+        neighbors = s.board.neighbors(from_hexid)
+        river_neighbors = s.board.river_neighbors(from_hexid)
+        match unit_type:
+            case MoveableUnit.WORKER:
+                if to_hexid in neighbors:
+                    result = True
+                elif s.faction.name == 'Nordic' and to_hexid in river_neighbors:
+                    # swim rule for workers
+                    result = True
+                else:
+                    result = False
+            case MoveableUnit.CHARACTER:
+                if to_hexid in neighbors:
+                    result = True
+                else:
+                    result = False
+            case MoveableUnit.MECH:
+                if to_hexid in neighbors:
+                    result = True
+                else:
+                    result = False
+
         return result
 
     def _legal_produce_choices(self, s: GameState) -> List[TurnChoice]:
         result: List[TurnChoice] = []
+
+        # first, can we even produce? We must be able to pay produce "costs" based on current worker count (per your model)
+        wc = s.units.worker_count()
+        if wc >= 4 and s.econ.power < 1:
+            # you cannot pay the cost
+            return result
+        if wc >= 6 and s.econ.popularity < 1:
+            # you cannot pay the cost
+            return result
+        if wc >= 8 and s.econ.coins < 1:
+            # you cannot pay the cost
+            return result
 
         # --- Production limit: base 2 + upgrades (per your Progress model) ---
         production_limit = 2 + s.prog.produce_modifier  # or s.prog.production_limit if you renamed it
